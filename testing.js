@@ -6,9 +6,8 @@
  * membuka tahap secara sekuensial, dan mengumpulkan evaluasi terstruktur dalam format JSON.
  */
 
-// Konfigurasi Webhook Pengumpulan Evaluasi (Opsional)
-// Isi dengan endpoint URL webhook (cth: Formspree, Google Apps Script, Make, dll) jika ingin kirim otomatis
-const FEEDBACK_ENDPOINT = '';
+// Konfigurasi Webhook Pengumpulan Evaluasi (Google Sheets Apps Script)
+const FEEDBACK_ENDPOINT = 'https://script.google.com/macros/s/AKfycbykaOSYXww74FwrN4NoMvxWEu4kLzryNe2H-OB-mr1_S9j2U1-4Gdunjt3inVyZWGdU/exec';
 
 const TEST_PROGRESS_KEY = 'patungan_guided_test_progress_v1';
 const FEEDBACK_STORAGE_KEY = 'patungan_feedback_json';
@@ -790,7 +789,7 @@ class GuidedTestingManager {
               <button type="button" onclick="guidedTesting.closeEvaluationModal()" class="px-4 py-2 border border-slate-900 bg-white font-bold text-xs">
                 Batal
               </button>
-              <button type="submit" 
+              <button type="submit" id="eval-submit-btn" 
                       class="px-6 py-2.5 bg-slate-900 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-wider border-2 border-slate-900 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] flex items-center gap-1.5 transition-all">
                 <i data-lucide="send" class="w-4 h-4"></i>
                 <span>Simpan & Kirim Evaluasi</span>
@@ -843,7 +842,7 @@ class GuidedTestingManager {
     }
   }
 
-  handleEvaluationSubmit(event) {
+  async handleEvaluationSubmit(event) {
     event.preventDefault();
 
     const name = document.getElementById('eval-name').value.trim();
@@ -858,18 +857,35 @@ class GuidedTestingManager {
       return;
     }
 
-    const completedStages = this.getCompletedStagesCount();
+    // 1. Tampilkan status loading pada tombol submit & disable
+    const submitBtn = document.getElementById('eval-submit-btn');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `
+        <div class="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent animate-spin mr-1"></div>
+        <span>Mengirim evaluasi...</span>
+      `;
+      submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+    }
 
-    const feedbackData = {
+    const completedStages = this.getCompletedStagesCount();
+    const now = new Date();
+
+    // Payload dengan field key spesifik untuk Google Apps Script (Google Sheets)
+    const payload = {
+      timestamp: now.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }),
+      isoTimestamp: now.toISOString(),
       id: 'FB-' + Date.now().toString().slice(-6),
-      submittedAt: new Date().toISOString(),
-      testerName: name,
-      workflowRating: wfRating,
-      uiuxRating: uiRating,
+      name: name,
+      testerName: name, // alias
+      workflowRating: Number(wfRating),
+      uiuxRating: Number(uiRating),
       workflowFeedback: wfCritique,
       uiuxFeedback: uiCritique,
-      futureSuggestions: suggestions,
-      stagesCompleted: `${completedStages}/7`,
+      suggestions: suggestions,
+      futureSuggestions: suggestions, // alias
+      completedStages: `${completedStages}/7`,
+      stagesCompleted: `${completedStages}/7`, // alias
       environment: {
         userAgent: navigator.userAgent,
         screenWidth: window.innerWidth,
@@ -877,7 +893,7 @@ class GuidedTestingManager {
       }
     };
 
-    // 1. Simpan ke localStorage (array feedback)
+    // 2. Simpan cadangan ke localStorage (array feedback)
     let storedList = [];
     try {
       const raw = localStorage.getItem(FEEDBACK_STORAGE_KEY);
@@ -885,79 +901,139 @@ class GuidedTestingManager {
     } catch (e) {
       storedList = [];
     }
-    storedList.unshift(feedbackData);
+    storedList.unshift(payload);
     localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify(storedList));
 
-    // 2. Kirim otomatis via fetch jika FEEDBACK_ENDPOINT disetel
+    // 3. Kirim data ke Google Apps Script (Anti-CORS preflight: text/plain)
+    let sendSuccess = false;
+    let sendError = null;
+
     if (FEEDBACK_ENDPOINT && FEEDBACK_ENDPOINT.trim() !== '') {
-      fetch(FEEDBACK_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(feedbackData)
-      }).catch(err => console.warn('Gagal POST webhook feedback:', err));
+      try {
+        const response = await fetch(FEEDBACK_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+
+        // Google Apps Script redirect or 200 OK
+        if (response.ok || response.status < 400 || response.type === 'opaque') {
+          sendSuccess = true;
+        } else {
+          sendError = `HTTP ${response.status}`;
+        }
+      } catch (err) {
+        console.warn('Gagal POST feedback ke Google Apps Script:', err);
+        sendError = err.message || 'Koneksi gagal';
+      }
     }
 
-    // 3. Tampilkan layar sukses & export actions
-    this.renderEvaluationSuccess(feedbackData);
+    // 4. Notifikasi Toast
+    if (window.app && typeof window.app.showToast === 'function') {
+      if (sendSuccess) {
+        window.app.showToast('✅ Evaluasi berhasil terkirim ke database Google Sheets!', 'success');
+      } else {
+        window.app.showToast('Evaluasi tersimpan lokal. Silakan gunakan opsi WhatsApp atau unduh JSON jika perlu.', 'info');
+      }
+    }
+
+    // 5. Tampilkan layar sukses & export actions
+    this.renderEvaluationSuccess(payload, sendSuccess, sendError);
   }
 
-  renderEvaluationSuccess(data) {
+  renderEvaluationSuccess(data, sendSuccess = false, sendError = null) {
     const container = document.getElementById('evaluation-form-container');
     if (!container) return;
+
+    const displayName = data.name || data.testerName || 'Tester';
+    const displayTime = data.timestamp || new Date(data.submittedAt || data.isoTimestamp).toLocaleString('id-ID');
+    const displayStages = data.completedStages || data.stagesCompleted || '7/7';
+    const displaySuggestions = data.suggestions || data.futureSuggestions || '-';
 
     const waText = encodeURIComponent(
       `*EVALUASI TESTER - PROTOTIPE PATUNGAN AKUN*\n` +
       `--------------------------------------\n` +
-      `👤 Nama: ${data.testerName}\n` +
-      `📅 Waktu: ${new Date(data.submittedAt).toLocaleString('id-ID')}\n` +
-      `🎯 Progres Misi: ${data.stagesCompleted} Tahap\n` +
+      `👤 Nama: ${displayName}\n` +
+      `📅 Waktu: ${displayTime}\n` +
+      `🎯 Progres Misi: ${displayStages} Tahap\n` +
       `⭐ Rating Workflow: ${data.workflowRating}/5\n` +
       `🎨 Rating UI/UX: ${data.uiuxRating}/5\n\n` +
       `*Masukan Alur (Workflow):*\n${data.workflowFeedback}\n\n` +
       `*Masukan Tampilan (UI/UX):*\n${data.uiuxFeedback}\n\n` +
-      `*Saran Fitur Baru:*\n${data.futureSuggestions}`
+      `*Saran Fitur Baru:*\n${displaySuggestions}`
     );
-
-    const jsonString = JSON.stringify(data, null, 2);
 
     container.innerHTML = `
       <div class="space-y-4 text-center py-2">
-        <div class="w-12 h-12 bg-emerald-600 text-white flex items-center justify-center mx-auto border-2 border-slate-900">
+        <div class="w-12 h-12 bg-emerald-600 text-white flex items-center justify-center mx-auto border-2 border-slate-900 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
           <i data-lucide="check-circle" class="w-6 h-6"></i>
         </div>
-        <h4 class="font-black text-base text-slate-900">Evaluasi Anda Berhasil Disimpan!</h4>
-        <p class="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
-          Data evaluasi telah tersimpan rapi dalam format JSON di database lokal browser. Silakan pilih cara pengiriman atau unduh file evaluasi di bawah ini:
-        </p>
+        <div>
+          <h4 class="font-black text-base text-slate-900">Evaluasi Anda Berhasil Disimpan!</h4>
+          <span class="text-[11px] font-mono text-slate-500">ID Tiket: ${data.id}</span>
+        </div>
 
-        <!-- Action Buttons -->
-        <div class="space-y-2 pt-2">
+        <!-- STATUS PENGIRIMAN KE GOOGLE SHEETS -->
+        ${sendSuccess ? `
+          <div class="p-3.5 bg-emerald-50 border-2 border-emerald-600 text-emerald-950 text-left shadow-[2px_2px_0px_0px_rgba(5,150,105,1)]">
+            <div class="flex items-start gap-2.5">
+              <div class="w-6 h-6 bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                <i data-lucide="database" class="w-3.5 h-3.5"></i>
+              </div>
+              <div>
+                <span class="font-black text-xs uppercase block text-emerald-900">Terkirim Otomatis ke Database Google Sheets!</span>
+                <p class="text-[11px] text-emerald-800 leading-snug mt-0.5">
+                  Data masukan Anda telah otomatis dicatat ke spreadsheet rekap riset tim pengembang. <b>Anda tidak wajib mengirim manual lagi.</b> Opsi tombol di bawah ini bersifat opsional untuk arsip pribadi Anda.
+                </p>
+              </div>
+            </div>
+          </div>
+        ` : `
+          <div class="p-3.5 bg-amber-50 border-2 border-amber-500 text-amber-950 text-left shadow-[2px_2px_0px_0px_rgba(245,158,11,1)]">
+            <div class="flex items-start gap-2.5">
+              <div class="w-6 h-6 bg-amber-400 text-slate-900 flex items-center justify-center shrink-0 mt-0.5 font-bold">
+                <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+              </div>
+              <div>
+                <span class="font-black text-xs uppercase block text-amber-900">Data Tersimpan Aman di Penyimpanan Lokal</span>
+                <p class="text-[11px] text-amber-800 leading-snug mt-0.5">
+                  Pengiriman langsung ke Google Sheets sedang offline atau terkendala jaringan (${sendError || 'koneksi offline'}). Data Anda tetap aman tersimpan di browser. Silakan gunakan tombol cadangan <b>Kirim via WhatsApp</b> atau <b>Download JSON</b> di bawah ini agar masukan Anda tetap tersampaikan.
+                </p>
+              </div>
+            </div>
+          </div>
+        `}
+
+        <!-- Action Buttons (Cadangan / Opsi Ekspor) -->
+        <div class="space-y-2 pt-1 text-left">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block text-center">
+            ${sendSuccess ? 'Opsi Arsip Pribadi / Cadangan (Opsional):' : 'Pilihan Pengiriman Cadangan:'}
+          </span>
           
           <!-- WhatsApp Share -->
           <a href="https://wa.me/?text=${waText}" target="_blank" 
-             class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center gap-2">
+             class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center gap-2 transition-all">
             <i data-lucide="message-circle" class="w-4 h-4"></i>
-            <span>Kirim Hasil via WhatsApp</span>
+            <span>${sendSuccess ? 'Kirim Cadangan via WhatsApp (Opsional)' : 'Kirim Masukan via WhatsApp'}</span>
           </a>
 
           <!-- Download JSON -->
           <button onclick="guidedTesting.downloadJSON('${data.id}')" 
-                  class="w-full py-2.5 bg-slate-900 hover:bg-blue-600 text-white font-bold text-xs uppercase tracking-wider border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center gap-2">
+                  class="w-full py-2.5 bg-slate-900 hover:bg-blue-600 text-white font-bold text-xs uppercase tracking-wider border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center gap-2 transition-all">
             <i data-lucide="download" class="w-4 h-4"></i>
             <span>Download File JSON (feedback-tester.json)</span>
           </button>
 
           <!-- Copy JSON -->
           <button onclick="guidedTesting.copyRawJSON('${data.id}')" 
-                  class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-900 flex items-center justify-center gap-2">
+                  class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-900 flex items-center justify-center gap-2 transition-all">
             <i data-lucide="copy" class="w-3.5 h-3.5"></i>
             <span>Salin Format JSON ke Clipboard</span>
           </button>
-
         </div>
 
-        <div class="pt-4 border-t border-slate-200">
-          <button onclick="guidedTesting.closeEvaluationModal()" class="text-xs text-slate-500 hover:text-slate-900 font-bold underline">
+        <div class="pt-3 border-t border-slate-200">
+          <button onclick="guidedTesting.closeEvaluationModal()" class="text-xs text-slate-600 hover:text-slate-900 font-bold underline">
             Selesai & Tutup Jendela
           </button>
         </div>
@@ -975,11 +1051,12 @@ class GuidedTestingManager {
     const item = list.find(f => f.id === feedbackId) || list[0];
     if (!item) return;
 
+    const safeName = (item.name || item.testerName || 'tester').replace(/\s+/g, '_');
     const blob = new Blob([JSON.stringify(item, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `feedback-${item.testerName.replace(/\s+/g, '_')}-${item.id}.json`;
+    a.download = `feedback-${safeName}-${item.id}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

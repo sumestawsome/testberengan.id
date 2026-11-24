@@ -197,12 +197,11 @@ Formulir mengumpulkan 6 poin wajib terstruktur:
 - **Download File JSON:** Tombol untuk mengunduh berkas `.json` individual (format: `feedback-[nama]-[id].json`).
 - **Salin Format JSON ke Clipboard:** Memudahkan tester menempelkan data JSON ke chat riset atau formulir eksternal.
 - **Kirim Hasil via WhatsApp:** Format teks rapi terstruktur yang otomatis membuka WhatsApp Web / App.
-- **Pengiriman Webhook Otomatis (Opsional):**
-  Di baris ke-11 file `testing.js`:
-  ```javascript
-  const FEEDBACK_ENDPOINT = ''; // Contoh: 'https://formspree.io/f/xxxx' atau webhook Make/Zapier/GAS
-  ```
-  Jika endpoint diisi, setiap kali form dikirim, data JSON akan otomatis di-`POST` via `fetch()`.
+- **Pengiriman Otomatis ke Google Sheets (Apps Script):**
+  Telah terintegrasi langsung di `testing.js` menggunakan endpoint Google Apps Script:
+  - Header anti-CORS preflight: `Content-Type: text/plain;charset=utf-8`
+  - Field data otomatis: `timestamp`, `name`, `workflowRating`, `uiuxRating`, `workflowFeedback`, `uiuxFeedback`, `suggestions`, `completedStages`
+  - Status pengiriman real-time & state loading pada tombol form evaluasi sehingga tester tidak perlu mengirim manual ulang jika request sukses.
 
 ---
 
