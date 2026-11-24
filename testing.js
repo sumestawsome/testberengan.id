@@ -1854,6 +1854,13 @@ class GuidedTestingManager {
     const modal = document.getElementById('modal-step-micro-review');
     if (modal) modal.classList.add('hidden');
 
+    if (curCase.id === '1B') {
+      const chatWin = document.getElementById('ai-chat-window');
+      if (chatWin && !chatWin.classList.contains('hidden')) {
+        chatWin.classList.add('hidden');
+      }
+    }
+
     // Berpindah ke sub-kasus berikutnya atau tahap berikutnya
     if (this.progress.currentSubCaseIndex + 1 < curStage.cases.length) {
       this.progress.currentSubCaseIndex++;
@@ -1872,6 +1879,8 @@ class GuidedTestingManager {
     this.renderWidget();
 
     if (this.progress.isFinished) {
+      const credModal = document.getElementById('modal-credentials');
+      if (credModal) credModal.classList.add('hidden');
       setTimeout(() => {
         this.showEvaluationModal();
       }, 500);
