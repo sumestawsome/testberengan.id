@@ -432,11 +432,15 @@ class AppController {
   setCategoryFilter(catId) {
     this.categoryFilter = catId;
     this.renderCurrentView();
+    window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'FILTER_CATEGORY', category: catId } }));
   }
 
   handleSearchInput(val) {
     this.searchQuery = val;
     this.renderCurrentView();
+    if (val && val.trim().length > 0) {
+      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'SEARCH_CATALOG', query: val } }));
+    }
   }
 
   clearSearch() {
@@ -470,6 +474,16 @@ class AppController {
     const currentPlanKey = this.selectedPlanDuration || '1_month';
     const plan = product.plans[currentPlanKey] || product.plans['1_month'];
     const groups = patunganState.getGroupsByProduct(product.id);
+
+    // Emit event untuk Guided Testing
+    const hasOpenGroup = groups.some(g => g.status === 'OPEN');
+    if (hasOpenGroup) {
+      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'VIEW_PRODUCT_DETAIL_OPEN_GROUP', productId } }));
+    }
+    const hasExpiredOrZero = groups.some(g => g.status === 'EXPIRED') || groups.length === 0;
+    if (hasExpiredOrZero) {
+      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'VIEW_EXPIRED_OR_FULL_GROUP', productId } }));
+    }
 
     return `
       <!-- BREADCRUMB -->
@@ -727,6 +741,7 @@ class AppController {
   selectProductPlan(productId, planKey) {
     this.selectedPlanDuration = planKey;
     this.navigate('product-detail', { productId, planKey });
+    window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'VIEW_PRODUCT_DETAIL_OPEN_GROUP', productId, planKey } }));
   }
 
   // ========================================================
@@ -1109,10 +1124,18 @@ class AppController {
 
       if (result.order.status === 'Aktif') {
         this.showToast('🎉 Selamat! Kuota grup genap terpenuhi dan akun Anda langsung AKTIF!', 'success');
+        window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'GROUP_ACTIVATED', groupId } }));
       } else if (result.order.status === 'Menunggu Kuota') {
         this.showToast('✅ Pembayaran saldo berhasil! Menunggu kuota grup terpenuhi.', 'success');
       } else {
         this.showToast('📋 Pesanan berhasil dibuat! Silakan verifikasi via Mode Admin.', 'info');
+      }
+
+      // Emit event sesuai metode bayar untuk Guided Testing
+      if (this.selectedPaymentMethod === 'TRANSFER_MANUAL') {
+        window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'CHECKOUT_TRANSFER_MANUAL', orderId: result.order.id } }));
+      } else if (this.selectedPaymentMethod === 'SALDO') {
+        window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'CHECKOUT_SALDO', orderId: result.order.id } }));
       }
 
       // Navigate to order history
@@ -1123,6 +1146,7 @@ class AppController {
         this.checkoutRaceConditionError = true;
         this.renderCurrentView();
         this.showToast('Gagal: Slot grup ini baru saja penuh oleh pengguna lain!', 'error');
+        window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'RACE_CONDITION_TRIGGERED', groupId } }));
       } else if (err.message === 'AUTH_REQUIRED') {
         this.pendingCheckout = { groupId, planKey };
         this.showLoginModal();
@@ -1694,6 +1718,125 @@ class AppController {
           </div>
         </form>
       </div>
+
+      <!-- SECTION 4: REKAP MASUKAN TESTER (JSON) -->
+      <div class="bg-white border-2 border-slate-900 p-6 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] mb-8">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b-2 border-slate-900 mb-6">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 bg-blue-600 text-white font-mono text-[10px] font-bold uppercase">Evaluasi Usability</span>
+              <h3 class="font-black text-sm uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                <i data-lucide="clipboard-list" class="w-4 h-4 text-blue-600"></i>
+                <span>4. Rekap Masukan & Evaluasi Tester (JSON)</span>
+              </h3>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">
+              Data masukan tersimpan di database lokal (JSON) dari tester yang mengisi form evaluasi 7 tahap pengujian.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="guidedTesting ? guidedTesting.showEvaluationModal() : alert('Guided Testing belum siap')" 
+                    class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold text-xs border border-slate-900 flex items-center gap-1.5">
+              <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+              <span>+ Isi Form Evaluasi</span>
+            </button>
+            <button onclick="guidedTesting ? guidedTesting.downloadAllFeedbacksJSON() : alert('Guided Testing belum siap')" 
+                    class="px-4 py-2 bg-slate-900 hover:bg-blue-600 text-white font-black text-xs uppercase tracking-wider border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center gap-1.5 transition-all">
+              <i data-lucide="download" class="w-4 h-4"></i>
+              <span>Download Semua Rekap JSON</span>
+            </button>
+          </div>
+        </div>
+
+        ${(() => {
+          const feedbacks = (window.guidedTesting && typeof window.guidedTesting.getAllFeedbacks === 'function')
+            ? window.guidedTesting.getAllFeedbacks()
+            : (() => {
+                try {
+                  const raw = localStorage.getItem('patungan_feedback_json');
+                  return raw ? JSON.parse(raw) : [];
+                } catch (e) {
+                  return [];
+                }
+              })();
+
+          if (feedbacks.length === 0) {
+            return `
+              <div class="py-10 text-center text-slate-400 text-xs border-2 border-dashed border-slate-300 p-6 bg-slate-50">
+                <i data-lucide="inbox" class="w-10 h-10 mx-auto text-slate-300 mb-2"></i>
+                <div class="font-bold text-slate-700 text-sm">Belum Ada Masukan Tester yang Tersimpan</div>
+                <p class="text-slate-500 max-w-md mx-auto mt-1">
+                  Selesaikan 7 tahap pengujian dengan panduan interaktif di pojok kiri bawah, atau klik tombol <b>"+ Isi Form Evaluasi"</b> di atas untuk mencoba form pengujian.
+                </p>
+              </div>
+            `;
+          }
+
+          return `
+            <div class="space-y-4">
+              <div class="flex items-center justify-between text-xs font-mono font-bold text-slate-600 pb-2 border-b border-slate-200">
+                <span>Total Evaluasi: ${feedbacks.length} Entri</span>
+                <span class="text-emerald-700">Tersimpan di LocalStorage (patungan_feedback_json)</span>
+              </div>
+              <div class="grid grid-cols-1 gap-4">
+                ${feedbacks.map(fb => `
+                  <div class="p-4 bg-slate-50 border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] text-xs space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+                      <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 bg-slate-900 text-white font-black flex items-center justify-center font-mono text-[11px]">
+                          ${fb.testerName ? fb.testerName.slice(0, 2).toUpperCase() : 'TS'}
+                        </span>
+                        <div>
+                          <span class="font-extrabold text-sm text-slate-900">${fb.testerName || 'Anonim'}</span>
+                          <span class="text-[10px] text-slate-400 font-mono ml-1">(${new Date(fb.submittedAt).toLocaleString('id-ID')})</span>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 bg-blue-100 text-blue-900 border border-blue-400 font-bold font-mono text-[10px]">
+                          Misi: ${fb.stagesCompleted || '7/7'}
+                        </span>
+                        <span class="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-400 font-bold font-mono text-[10px]">
+                          Workflow: ★ ${fb.workflowRating}/5
+                        </span>
+                        <span class="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-400 font-bold font-mono text-[10px]">
+                          UI/UX: ★ ${fb.uiuxRating}/5
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-slate-700 text-[11px] leading-relaxed">
+                      <div class="p-2.5 bg-white border border-slate-300">
+                        <span class="font-bold text-slate-900 block mb-1 uppercase text-[10px]">Kekurangan Alur (Workflow):</span>
+                        <p class="whitespace-pre-line text-slate-600">${fb.workflowFeedback || '-'}</p>
+                      </div>
+                      <div class="p-2.5 bg-white border border-slate-300">
+                        <span class="font-bold text-slate-900 block mb-1 uppercase text-[10px]">Kekurangan Tampilan (UI/UX):</span>
+                        <p class="whitespace-pre-line text-slate-600">${fb.uiuxFeedback || '-'}</p>
+                      </div>
+                      <div class="p-2.5 bg-white border border-slate-300">
+                        <span class="font-bold text-slate-900 block mb-1 uppercase text-[10px]">Saran Fitur Baru:</span>
+                        <p class="whitespace-pre-line text-slate-600">${fb.futureSuggestions || '-'}</p>
+                      </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-200 text-[11px]">
+                      <span class="font-mono text-slate-400">ID: ${fb.id}</span>
+                      <div class="flex items-center gap-2">
+                        <button onclick="guidedTesting.copyRawJSON('${fb.id}')" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 font-bold border border-slate-900 flex items-center gap-1">
+                          <i data-lucide="copy" class="w-3 h-3"></i> Salin JSON
+                        </button>
+                        <button onclick="guidedTesting.downloadJSON('${fb.id}')" class="px-2.5 py-1 bg-slate-900 hover:bg-blue-600 text-white font-bold border border-slate-900 flex items-center gap-1">
+                          <i data-lucide="download" class="w-3 h-3"></i> Unduh File
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        })()}
+      </div>
     `;
   }
 
@@ -1701,8 +1844,10 @@ class AppController {
   adminApproveOrder(orderId) {
     try {
       const res = patunganState.approveOrder(orderId);
+      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'ADMIN_APPROVE_ORDER', orderId } }));
       if (res.group.status === 'ACTIVE') {
         this.showToast(`Pesanan ${orderId} di-approve! Kuota grup ${res.group.groupNumber} GENAP PENUH dan akun resmi AKTIF!`, 'success');
+        window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'GROUP_ACTIVATED', groupId: res.group.id } }));
       } else {
         this.showToast(`Pesanan ${orderId} disetujui! Slot grup bertambah menjadi ${res.group.currentSlots}/${res.group.maxSlots}.`, 'success');
       }
@@ -1729,6 +1874,7 @@ class AppController {
     try {
       const res = patunganState.simulateFillGroup(groupId);
       this.showToast(`⚡ Grup ${res.group.groupNumber} berhasil diisi penuh (${res.group.maxSlots}/${res.group.maxSlots})! ${res.activatedOrders} pesanan kini AKTIF. Cek kredensial di Pesanan Saya.`, 'success');
+      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'GROUP_ACTIVATED', groupId } }));
       this.renderCurrentView();
     } catch (e) {
       this.showToast(e.message, 'error');
@@ -1739,6 +1885,7 @@ class AppController {
     try {
       const res = patunganState.simulateExpireGroup(groupId);
       this.showToast(`⌛ Waktu grup habis! ${res.refundedCount} pesanan di-refund 100% (Total: Rp ${res.totalRefundedAmount.toLocaleString('id-ID')}). Saldo user bertambah.`, 'info');
+      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'SIMULATE_EXPIRE_REFUND', groupId } }));
       this.renderCurrentView();
     } catch (e) {
       this.showToast(e.message, 'error');
@@ -1865,6 +2012,7 @@ class AppController {
 
     document.getElementById('modal-credentials').classList.remove('hidden');
     this.safeRenderIcons();
+    window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'VIEW_CREDENTIALS_AND_INTERACT', groupId } }));
   }
 
   showRejectReasonModal(orderId) {
@@ -1964,14 +2112,16 @@ class AppController {
   }
 
   loginUser(userId) {
+    const wasPending = !!this.pendingCheckout;
     patunganState.switchUser(userId);
     this.closeModal('modal-login');
     this.showToast('Login berhasil!', 'success');
     this.updateNavbarBadges();
 
-    if (this.pendingCheckout) {
+    if (wasPending) {
       const dest = this.pendingCheckout;
       this.pendingCheckout = null;
+      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'GUEST_INTERCEPT_AND_LOGIN', userId } }));
       this.navigate('checkout', dest);
     } else {
       this.renderCurrentView();
@@ -1995,14 +2145,16 @@ class AppController {
     const email = emailInput.value.trim();
     if (!name || !email) return;
 
+    const wasPending = !!this.pendingCheckout;
     patunganState.registerUser(name, email);
     this.closeModal('modal-login');
     this.showToast(`Selamat datang, ${name}! Bonus saldo Rp 25.000 telah ditambahkan.`, 'success');
     this.updateNavbarBadges();
 
-    if (this.pendingCheckout) {
+    if (wasPending) {
       const dest = this.pendingCheckout;
       this.pendingCheckout = null;
+      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'GUEST_INTERCEPT_AND_LOGIN', name } }));
       this.navigate('checkout', dest);
     } else {
       this.renderCurrentView();
@@ -2023,6 +2175,7 @@ class AppController {
     try {
       patunganState.simulateSlotRaceCondition(groupId);
       this.showToast('⚡ [Simulator] Kuota grup ini berhasil diisi penuh oleh pengguna lain di background!', 'info');
+      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'RACE_CONDITION_TRIGGERED', groupId } }));
     } catch (e) {
       this.showToast(e.message, 'error');
     }
@@ -2076,6 +2229,7 @@ class AppController {
       patunganState.reuploadProof(this.reuploadOrderId, fileName);
       this.closeModal('modal-reupload-proof');
       this.showToast(`Bukti transfer untuk pesanan ${this.reuploadOrderId} berhasil dikirim ulang! Status kini Menunggu Verifikasi.`, 'success');
+      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'REUPLOAD_PROOF_SUBMITTED', orderId: this.reuploadOrderId } }));
       this.renderCurrentView();
     } catch (e) {
       this.showToast(e.message, 'error');
@@ -2086,6 +2240,7 @@ class AppController {
     patunganState.requestGroup(productId);
     const product = patunganState.getProductById(productId);
     this.showToast(`Permintaan buka grup baru untuk ${product ? product.name : 'produk'} telah dikirim ke admin! Anda juga dapat langsung membukanya di Mode Admin.`, 'success');
+    window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'REQUEST_NEW_GROUP', productId } }));
     this.renderCurrentView();
   }
 
@@ -2126,6 +2281,7 @@ class AppController {
       if (icon) icon.setAttribute('data-lucide', 'eye');
     }
     this.safeRenderIcons();
+    window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'VIEW_CREDENTIALS_AND_INTERACT' } }));
   }
 
   copyToClipboard(elementId, label = 'Teks') {
@@ -2134,10 +2290,12 @@ class AppController {
     
     navigator.clipboard.writeText(input.value).then(() => {
       this.showToast(`${label} berhasil disalin ke clipboard!`, 'info');
+      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'VIEW_CREDENTIALS_AND_INTERACT' } }));
     }).catch(() => {
       input.select();
       document.execCommand('copy');
       this.showToast(`${label} disalin!`, 'info');
+      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'VIEW_CREDENTIALS_AND_INTERACT' } }));
     });
   }
 
@@ -2230,6 +2388,9 @@ class AppController {
     // Tambah pesan user
     this.chatMessages.push({ sender: 'user', text: userText });
     this.renderChatMessages();
+
+    // Emit event untuk Guided Testing
+    window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'CHATBOT_SENT', text: userText } }));
 
     // Generate respon AI secara cerdas berdasarkan keyword & data produk
     setTimeout(() => {

@@ -24,6 +24,7 @@ barengan prototive/
 ├── index.html   # Shell HTML, navigasi, modal container, AI chatbot widget
 ├── data.js      # Data dummy awal & StateManager (sinkronisasi localStorage)
 ├── app.js       # SPA router, UI renderer, event handlers, & logika chatbot
+├── testing.js   # Guided Usability Testing ala Duolingo & Form Evaluasi Tester (JSON)
 └── README.md    # Panduan penggunaan & skenario testing
 ```
 
@@ -133,3 +134,82 @@ Saat di-reset, seluruh data dikembalikan ke kondisi base data:
 - Netflix Grup #05 kembali ke 4/5 slot (OPEN hampir penuh)
 - Canva Grup #11 kembali ke status EXPIRED
 - Spotify Premium Family kembali ke 0 grup terbuka
+
+---
+
+## 🧭 Mode Panduan Pengujian Interaktif (Guided Usability Testing ala Duolingo)
+
+Untuk memberikan pengalaman uji coba yang terarah dan menyenangkan, prototipe ini dilengkapi dengan **Mode Panduan Pengujian Bertahap (`testing.js`)**:
+
+1. **Floating Trigger Widget (Pojok Kiri Bawah):**
+   - Tombol mengambang elegan bertuliskan **"Panduan Tes (X/7)"** dengan persentase progres. Posisinya di kiri bawah sehingga tidak pernah bertabrakan dengan widget Asisten AI di kanan bawah.
+   - Menggunakan sudut siku tajam (`rounded-none`), aksen hijau emerald, dan bayangan neo-fintech.
+
+2. **Modal Selamat Datang (Intro Study Case):**
+   - Muncul otomatis saat tester baru pertama kali membuka web.
+   - Memberikan gambaran singkat mengenai 7 tahap pengujian yang akan dijalani, dilengkapi tombol **"Mulai Misi Tahap 1"** dan *"Jelajah Bebas"*.
+
+3. **Panel Misi Bertahap (Duolingo Style):**
+   - **Progress Bar Keseluruhan:** Indikator visual 0% s/d 100%.
+   - **Tahap Terbuka Sekuensial:** Tahap aktif terbuka dengan instruksi konkret dan daftar sub-misi (Case). Tahap yang sudah selesai diberi tanda centang hijau & badge "Lulus", sedangkan tahap selanjutnya terkunci (ikon gembok) sampai tahap sebelumnya diselesaikan.
+   - **Deteksi Otomatis (Event Hooks):** Setiap kali tester melakukan aksi yang relevan di aplikasi, sub-misi terkait **otomatis tercentang**, toast sukses muncul, dan jika seluruh sub-misi di tahap tersebut selesai, tahap berikutnya terbuka otomatis!
+   - Tombol **"Ulangi Tahap Ini"** dan **"Reset Progres"** untuk fleksibilitas tester.
+
+### 📋 Ringkasan 7 Tahap Pengujian:
+- **Tahap 1: Eksplorasi & Pencarian Produk**
+  - *Case 1A (Cari Mandiri):* Gunakan kolom search atau klik filter kategori.
+  - *Case 1B (Bantuan AI Chatbot):* Buka Tanya Asisten AI di kanan bawah dan kirim pesan/pertanyaan.
+- **Tahap 2: Memilih Paket & Cek Ketersediaan Grup**
+  - *Case 2A (Cek Grup OPEN & Durasi):* Buka produk dengan grup OPEN (Canva/Netflix) dan ganti durasi (1 vs 3 Bulan).
+  - *Case 2B (Cek Produk Tanpa Grup / Expired):* Buka Spotify (0 grup) lalu klik "Request Buka Grup Baru", atau cek Canva Grup #11 (EXPIRED).
+- **Tahap 3: Pengecekan Status Login (Guest Mode)**
+  - *Case 3B (Cegat Login & Auto-Redirect):* Logout ke Mode Tamu, klik "Gabung Grup Ini", lalu masuk kembali via Modal Login. Sistem otomatis mengarahkan ke halaman Checkout.
+- **Tahap 4: Checkout & Proses Pembayaran**
+  - *Case 4A (Transfer Manual + Upload Bukti):* Selesaikan pesanan via Transfer Manual & unggah bukti transfer.
+  - *Case 4B (Bayar Pakai Saldo Dompet):* Selesaikan pesanan instan via Saldo Dompet.
+  - *Case 4C (Simulasi Slot Diserobot):* Di checkout, klik tombol simulator kuning slot diserobot orang lain, lalu bayar untuk memverifikasi penolakan ramah dan keamanan saldo.
+- **Tahap 5: Verifikasi Pembayaran (Mode Admin)**
+  - *Case 5A (Approve Pesanan Pending):* Buka Mode Admin, setujui (Approve) pesanan transfer manual.
+  - *Case 5B (Reject & Upload Ulang Bukti):* Tolak (Reject) pesanan di Mode Admin, lalu buka Pesanan Saya dan unggah bukti baru via tombol "Upload Ulang Bukti".
+- **Tahap 6: Masa Tunggu Kuota & Garansi Refund**
+  - *Case 6A/B (Grup Penuh ➔ Akun Aktif):* Buat grup menjadi 5/5 (bisa gabung slot ke-5 Netflix atau klik "Simulasikan Penuh" di Mode Admin).
+  - *Case 6C (Simulasi Waktu Habis & Auto-Refund):* Klik "Simulasikan Waktu Habis" di Mode Admin untuk membuktikan saldo otomatis kembali 100%.
+- **Tahap 7: Riwayat Pesanan & Kredensial Akun**
+  - *Case 7 (Akses Kredensial Akun Aktif):* Buka Pesanan Saya, klik "Lihat Detail Akun" pada pesanan aktif, lalu klik tombol Salin atau lihat password.
+
+---
+
+## 📝 Form Evaluasi Tester & Ekspor JSON
+
+Setelah Tahap 7 selesai (atau kapan saja melalui tombol *"Form Evaluasi"* di panel panduan atau Mode Admin), modal **Form Evaluasi Tester** akan terbuka.
+
+### Format Data Evaluasi:
+Formulir mengumpulkan 6 poin wajib terstruktur:
+1. **Nama Lengkap / Panggilan Tester**
+2. **Penilaian Kemudahan Alur Kerja (Workflow):** Skala bintang 1–5
+3. **Penilaian Tampilan & Kenyamanan (UI/UX):** Skala bintang 1–5
+4. **Kekurangan Alur (Workflow):** Teks evaluasi kendala proses/alur
+5. **Kekurangan Tampilan (UI/UX):** Teks evaluasi visual, tata letak, atau tombol
+6. **Saran Pengembangan & Fitur Tambahan:** Teks masukan ide fitur masa depan
+
+### Penyimpanan & Opsi Ekspor Hasil:
+- **Local JSON Storage:** Disimpan otomatis di `localStorage` dengan kunci `patungan_feedback_json` (berupa array objek JSON lengkap dengan timestamp, progres tahap, dan metadata perangkat).
+- **Download File JSON:** Tombol untuk mengunduh berkas `.json` individual (format: `feedback-[nama]-[id].json`).
+- **Salin Format JSON ke Clipboard:** Memudahkan tester menempelkan data JSON ke chat riset atau formulir eksternal.
+- **Kirim Hasil via WhatsApp:** Format teks rapi terstruktur yang otomatis membuka WhatsApp Web / App.
+- **Pengiriman Webhook Otomatis (Opsional):**
+  Di baris ke-11 file `testing.js`:
+  ```javascript
+  const FEEDBACK_ENDPOINT = ''; // Contoh: 'https://formspree.io/f/xxxx' atau webhook Make/Zapier/GAS
+  ```
+  Jika endpoint diisi, setiap kali form dikirim, data JSON akan otomatis di-`POST` via `fetch()`.
+
+---
+
+## 🛡️ Rekap Masukan Tester di Mode Admin
+
+Buka **Mode Admin (Tester)** dan gulir ke **"4. Rekap Masukan & Evaluasi Tester (JSON)"**:
+- Menampilkan total evaluasi yang telah masuk.
+- Kartu rekap setiap tester lengkap dengan rating bintang, kritik workflow, kritik UI/UX, dan saran.
+- Tombol **"Download Semua Rekap JSON"** untuk mengunduh seluruh masukan sekaligus sebagai satu berkas `semua-feedback-tester-[id].json`.
+- Tombol salin JSON per entri untuk kemudahan ekstraksi data.
