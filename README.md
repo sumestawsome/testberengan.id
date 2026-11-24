@@ -121,5 +121,15 @@ Prototipe ini **100% Client-Side Statis**. Tidak memerlukan instalasi npm, node 
 
 ---
 
-### 🔄 Reset Data
-Kapan saja Anda ingin mengulang pengujian dari nol, buka **Mode Admin (Tester)** lalu klik tombol merah **"Reset Semua Data Dummy"**. Seluruh data akan kembali ke kondisi bersih awal.
+### 🔄 Manajemen Reset & Base Data
+Kapan saja Anda ingin mengulang pengujian dari nol, Anda dapat mereset data menggunakan 3 cara mudah:
+1. **Tombol "Reset Demo" di Top Notice Bar:** Klik tombol teks rose *"Reset Demo"* pada bar gelap paling atas (atau dari menu mobile dropdown di HP).
+2. **Tombol di Mode Admin:** Buka menu **Mode Admin (Tester)** lalu klik tombol merah **"Reset Semua Data Dummy"**.
+3. **URL Parameter `?reset=1`:** Buka aplikasi dengan menambahkan parameter `?reset=1` pada URL browser (misal `index.html?reset=1`), sistem akan otomatis membersihkan `localStorage`, memuat data awal versi terbaru (`v2`), dan membersihkan parameter URL tanpa reload.
+
+Saat di-reset, seluruh data dikembalikan ke kondisi base data:
+- Akun Budi Santoso dengan saldo awal Rp 25.000
+- Canva Grup #12 kembali ke 3/5 slot (OPEN)
+- Netflix Grup #05 kembali ke 4/5 slot (OPEN hampir penuh)
+- Canva Grup #11 kembali ke status EXPIRED
+- Spotify Premium Family kembali ke 0 grup terbuka

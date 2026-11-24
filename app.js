@@ -1746,10 +1746,14 @@ class AppController {
   }
 
   resetDataConfirm() {
-    if (confirm('Apakah Anda yakin ingin mereset seluruh database dummy ke kondisi awal? Data pesanan, saldo, dan grup akan dikembalikan ke default.')) {
+    if (confirm('Apakah Anda yakin ingin mereset seluruh database dummy ke kondisi awal? Seluruh pesanan, saldo, dan slot grup akan dikembalikan ke Base Data default.')) {
       patunganState.resetAll();
-      this.showToast('Semua data berhasil di-reset ke kondisi awal.', 'info');
-      this.navigate('home');
+      this.updateNavbarBadges();
+      this.renderCurrentView();
+      this.showToast('Data berhasil di-reset ke kondisi awal (Base Data).', 'info');
+      if (this.currentView === 'checkout') {
+        this.navigate('home');
+      }
     }
   }
 

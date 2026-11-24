@@ -3,10 +3,12 @@
  * Menggunakan localStorage untuk persistensi data secara offline/client-side.
  */
 
+const DATA_VERSION = 'v2';
 const STORAGE_KEY = 'patungan_akun_v1_state';
 
 // Data default awal yang realistis dan komprehensif
 const DEFAULT_DATA = {
+  version: DATA_VERSION,
   currentUser: {
     id: 'usr_budi',
     name: 'Budi Santoso',
@@ -422,27 +424,57 @@ class StateManager {
   }
 
   init() {
+    // 1. Cek apakah URL mengandung query parameter ?reset=1
+    let urlHasReset = false;
+    try {
+      if (typeof window !== 'undefined' && window.location && window.location.search) {
+        urlHasReset = window.location.search.includes('reset=1');
+      }
+    } catch (e) {}
+
+    if (urlHasReset) {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        // Hapus parameter ?reset=1 dari URL tanpa reload halaman
+        if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+          const cleanUrl = window.location.pathname + (window.location.hash || '');
+          window.history.replaceState({}, document.title, cleanUrl);
+        }
+      } catch (e) {}
+      this.resetAll();
+      return;
+    }
+
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      this.state = JSON.parse(JSON.stringify(DEFAULT_DATA));
-      this.save();
+      this.resetAll();
     } else {
       try {
         this.state = JSON.parse(raw);
+
+        // 2. Cek apakah data tersimpan memiliki version === DATA_VERSION
+        if (!this.state || this.state.version !== DATA_VERSION) {
+          console.info(`[Patungan Akun] Stored data version (${this.state ? this.state.version : 'none'}) is outdated. Resetting to ${DATA_VERSION}...`);
+          this.resetAll();
+          return;
+        }
+
         // Pastikan fallback jika ada field yang kurang
-        if (!this.state.currentUser) this.state.currentUser = DEFAULT_DATA.currentUser;
+        if (!this.state.currentUser && this.state.currentUser !== null) this.state.currentUser = DEFAULT_DATA.currentUser;
         if (!this.state.mutations) this.state.mutations = DEFAULT_DATA.mutations;
         if (!this.state.orders) this.state.orders = DEFAULT_DATA.orders;
         if (!this.state.subscriptionGroups) this.state.subscriptionGroups = DEFAULT_DATA.subscriptionGroups;
       } catch (e) {
         console.error('Error parsing stored state, resetting to default:', e);
-        this.state = JSON.parse(JSON.stringify(DEFAULT_DATA));
-        this.save();
+        this.resetAll();
       }
     }
   }
 
   save() {
+    if (this.state) {
+      this.state.version = DATA_VERSION;
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
     window.dispatchEvent(new CustomEvent('patungan_state_updated', { detail: this.state }));
   }
@@ -450,6 +482,7 @@ class StateManager {
   resetAll() {
     // Reset kembali ke data dummy murni
     const freshData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    freshData.version = DATA_VERSION;
     // Perbarui timestamp expiresAt agar selalu baru saat di-reset
     freshData.subscriptionGroups.forEach(g => {
       if (g.id === 'grp_canva_12') g.expiresAt = Date.now() + (36 * 3600 * 1000);

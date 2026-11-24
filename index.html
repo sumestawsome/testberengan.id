@@ -99,6 +99,10 @@
         <button onclick="app.showUserSwitchModal()" class="text-slate-300 hover:text-white underline flex items-center gap-1">
           <i data-lucide="users" class="w-3.5 h-3.5"></i> Ganti Profil User
         </button>
+        <span class="text-slate-600">|</span>
+        <button onclick="app.resetDataConfirm()" class="text-rose-300 hover:text-rose-200 underline font-bold flex items-center gap-1">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset Demo
+        </button>
       </div>
     </div>
   </div>
@@ -189,12 +193,15 @@
       <button onclick="app.navigate('admin'); app.toggleMobileMenu()" class="w-full text-left px-3 py-2 font-bold bg-amber-400 hover:bg-amber-300 text-slate-900 flex items-center gap-2 border-2 border-slate-900">
         <i data-lucide="shield-alert" class="w-4 h-4"></i> Mode Admin (Simulator Tester)
       </button>
-      <div class="pt-2 flex gap-2">
-        <button onclick="app.showTopUpModal(); app.toggleMobileMenu()" class="flex-1 text-center py-2 text-xs font-bold bg-emerald-600 text-white">
+      <div class="pt-2 flex flex-wrap gap-2">
+        <button onclick="app.showTopUpModal(); app.toggleMobileMenu()" class="flex-1 min-w-[100px] text-center py-2 text-xs font-bold bg-emerald-600 text-white">
           + Top Up Saldo
         </button>
-        <button onclick="app.showUserSwitchModal(); app.toggleMobileMenu()" class="flex-1 text-center py-2 text-xs font-bold border border-slate-900">
+        <button onclick="app.showUserSwitchModal(); app.toggleMobileMenu()" class="flex-1 min-w-[100px] text-center py-2 text-xs font-bold border border-slate-900">
           Ganti Profil
+        </button>
+        <button onclick="app.resetDataConfirm(); app.toggleMobileMenu()" class="flex-1 min-w-[100px] text-center py-2 text-xs font-bold bg-rose-600 text-white flex items-center justify-center gap-1">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset Demo
         </button>
       </div>
     </div>
