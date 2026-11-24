@@ -222,6 +222,7 @@ class GuidedTestingManager {
     this.selectedStepExperience = '';
     this.selectedWorkflowRating = 0;
     this.selectedUiuxRating = 0;
+    this.isTransitioningStep = false;
     this.init();
   }
 
@@ -354,6 +355,7 @@ class GuidedTestingManager {
     });
 
     const handleSync = () => {
+      if (this.isTransitioningStep) return;
       if (this.progress && this.progress.isSubCaseRunning) {
         this.renderWidget();
         if (this.clueActive) {
@@ -366,6 +368,7 @@ class GuidedTestingManager {
 
     window.addEventListener('hashchange', () => {
       this.removeExampleBalloon();
+      if (this.isTransitioningStep) return;
       handleSync();
     });
 
@@ -376,6 +379,7 @@ class GuidedTestingManager {
   handleTestEvent(detail) {
     if (!detail || !detail.action) return;
     if (this.progress.isFinished) return;
+    if (this.isTransitioningStep) return;
 
     const currentStage = STAGES_CONFIG[this.progress.currentStageIndex];
     if (!currentStage) return;
@@ -385,8 +389,27 @@ class GuidedTestingManager {
 
     // 1. Cek apakah sub-kasus ini sedang berstatus "RUNNING"
     if (!this.progress.isSubCaseRunning) {
-      if (window.app && typeof window.app.showToast === 'function') {
-        window.app.showToast(`Klik "Mulai Sub-Tes Ini" pada panduan misi sebelum menjalankan aksi.`, 'info');
+      // Toast peringatan HANYA muncul jika pengguna secara aktif melakukan aksi transaksi/mutasi saat terkunci
+      const MUTATION_ACTIONS = [
+        'CHECKOUT_TRANSFER_MANUAL',
+        'CHECKOUT_SALDO',
+        'CHECKOUT_SUCCESS',
+        'RACE_CONDITION_TRIGGERED',
+        'ADMIN_APPROVE_ORDER',
+        'ADMIN_APPROVE',
+        'ADMIN_REJECT',
+        'REUPLOAD_PROOF_SUBMITTED',
+        'REUPLOAD_PROOF',
+        'GROUP_ACTIVATED',
+        'GROUP_FILLED',
+        'SIMULATE_EXPIRE_REFUND',
+        'GROUP_EXPIRED',
+        'REQUEST_NEW_GROUP'
+      ];
+      if (MUTATION_ACTIONS.includes(detail.action)) {
+        if (window.app && typeof window.app.showToast === 'function') {
+          window.app.showToast(`Klik "Mulai Sub-Tes Ini" pada panduan misi sebelum menjalankan aksi.`, 'info');
+        }
       }
       return;
     }
@@ -432,18 +455,31 @@ class GuidedTestingManager {
   }
 
   handleSubCaseSuccess(stage, subCase) {
-    this.clearClueSpotlight();
+    // 1. Matikan Spotlight Seketika Saat Sub-Tes Berhasil
+    this.isTransitioningStep = true;
+    this.clearAllSpotlights();
+
+    // Hapus/sembunyikan minibar seketika agar tidak ada instruksi langkah yang menggantung
+    const minibarEl = document.getElementById('guided-test-minibar');
+    if (minibarEl) minibarEl.remove();
+    const container = document.getElementById('guided-test-container');
+    if (container) container.innerHTML = '';
+
     this.progress.isSubCaseRunning = false;
     this.progress.completedCases[subCase.id] = true;
     this.saveProgress();
-    this.sanitizeWorkspaceForCase(subCase.id);
 
-    if (window.app && typeof window.app.showToast === 'function') {
-      window.app.showToast(`Sub-misi ${subCase.id} selesai. Silakan isi ulasan langkah ini.`, 'success');
-    }
+    // 2. Beri jeda baca notification toast sebelum pop-up evaluasi muncul
+    // Khusus 2A (ganti durasi paket) & 3B (login modal): jeda singkat 700 ms
+    // Sub-tes lainnya dengan toast notifikasi: jeda 2.500 ms (2,5 detik)
+    const delayMs = (subCase.id === '2A' || subCase.id === '3B') ? 700 : 2500;
 
-    this.renderWidget();
-    this.showStepMicroReviewModal(stage, subCase);
+    setTimeout(() => {
+      this.isTransitioningStep = false;
+      this.sanitizeWorkspaceForCase(subCase.id);
+      this.renderWidget();
+      this.showStepMicroReviewModal(stage, subCase);
+    }, delayMs);
   }
 
   // --- CLUE & SPOTLIGHT BLINKING (ESKALASI 2 LEVEL) ---
@@ -642,6 +678,7 @@ class GuidedTestingManager {
 
   reapplySpotlight() {
     if (typeof document === 'undefined') return;
+    if (this.isTransitioningStep) return;
     this.clearSpotlightDomOnly();
 
     const curStage = STAGES_CONFIG[this.progress.currentStageIndex];
@@ -1294,7 +1331,7 @@ class GuidedTestingManager {
     document.querySelectorAll('.spotlight-badge').forEach(b => b.remove());
   }
 
-  clearClueSpotlight() {
+  clearAllSpotlights() {
     this.clearClueTimers();
     this.removeExampleBalloon();
     this.clearSpotlightDomOnly();
@@ -1303,9 +1340,13 @@ class GuidedTestingManager {
     this.clarifiedClueText = '';
   }
 
+  clearClueSpotlight() {
+    this.clearAllSpotlights();
+  }
+
   toggleClueSpotlight() {
     if (this.clueActive) {
-      this.clearClueSpotlight();
+      this.clearAllSpotlights();
     } else {
       this.activateClueSpotlight();
     }
@@ -1314,6 +1355,7 @@ class GuidedTestingManager {
 
   // --- KONTROL SUB-TES ---
   startActiveSubCase() {
+    this.isTransitioningStep = false;
     const curStage = STAGES_CONFIG[this.progress.currentStageIndex];
     const curCase = curStage.cases[this.progress.currentSubCaseIndex];
     this.sanitizeWorkspaceForCase(curCase.id);
@@ -1323,7 +1365,7 @@ class GuidedTestingManager {
     this.clueActive = false;
     this.clueLevel = 0;
     this.clarifiedClueText = '';
-    this.clearClueSpotlight();
+    this.clearAllSpotlights();
     this.saveProgress();
     this.renderWidget();
     this.startIdleClueTimer();
@@ -1335,7 +1377,7 @@ class GuidedTestingManager {
 
   pauseActiveSubCase() {
     this.progress.isSubCaseRunning = false;
-    this.clearClueSpotlight();
+    this.clearAllSpotlights();
     this.saveProgress();
     this.renderWidget();
     if (window.app && typeof window.app.showToast === 'function') {
@@ -1381,6 +1423,11 @@ class GuidedTestingManager {
       container = document.createElement('div');
       container.id = 'guided-test-container';
       document.body.appendChild(container);
+    }
+
+    if (this.isTransitioningStep) {
+      container.innerHTML = '';
+      return;
     }
 
     const completedCases = this.getCompletedCasesCount();
@@ -1869,10 +1916,10 @@ class GuidedTestingManager {
 
           <div>
             <label class="block font-bold text-slate-900 mb-1" id="step-note-label">
-              Catatan singkat:
+              Langkah apa yang masih membingungkan atau kurang dipahami? <span class="text-slate-400 font-normal">(Opsional)</span>:
             </label>
             <textarea id="step-review-note" rows="2" 
-                      placeholder="Bagian mana yang terasa aneh atau tidak perlu? (Opsional jika Aman & Jelas)"
+                      placeholder="Misal: tombolnya kurang terlihat, notifikasinya terlalu cepat hilang, atau alurnya sudah sangat jelas..."
                       class="w-full p-2.5 border border-slate-300 focus:border-slate-900 font-medium focus:outline-none"></textarea>
           </div>
 
@@ -1911,15 +1958,15 @@ class GuidedTestingManager {
 
     if (val === 'Aman & Jelas' && btnAman) {
       btnAman.className = 'p-2.5 border-2 border-emerald-600 bg-emerald-50 text-emerald-950 font-bold text-center flex flex-col items-center gap-1';
-      if (noteLabel) noteLabel.innerHTML = 'Catatan singkat <span class="text-slate-400 font-normal">(opsional):</span>';
+      if (noteLabel) noteLabel.innerHTML = 'Langkah apa yang masih membingungkan atau kurang dipahami? <span class="text-slate-400 font-normal">(Opsional)</span>:';
       if (noteTextarea) noteTextarea.required = false;
     } else if (val === 'Agak Bingung' && btnBingung) {
       btnBingung.className = 'p-2.5 border-2 border-amber-500 bg-amber-50 text-amber-950 font-bold text-center flex flex-col items-center gap-1';
-      if (noteLabel) noteLabel.innerHTML = 'Catatan singkat kendala / kebingungan <span class="text-red-500">*</span>:';
+      if (noteLabel) noteLabel.innerHTML = 'Langkah apa yang masih membingungkan atau kurang dipahami? <span class="text-red-500">*</span>:';
       if (noteTextarea) noteTextarea.required = true;
     } else if (val === 'Terasa Aneh / Ada Bug' && btnBug) {
       btnBug.className = 'p-2.5 border-2 border-rose-600 bg-rose-50 text-rose-950 font-bold text-center flex flex-col items-center gap-1';
-      if (noteLabel) noteLabel.innerHTML = 'Catatan singkat keanehan / bug yang dialami <span class="text-red-500">*</span>:';
+      if (noteLabel) noteLabel.innerHTML = 'Catatan keanehan / bug yang dialami pada langkah ini <span class="text-red-500">*</span>:';
       if (noteTextarea) noteTextarea.required = true;
     }
   }
