@@ -56,6 +56,7 @@ class AppController {
 
     // Re-initialize Lucide icons safely
     this.safeRenderIcons();
+    window.dispatchEvent(new CustomEvent('patungan_ui_changed'));
   }
 
   safeRenderIcons() {
@@ -214,6 +215,7 @@ class AppController {
     this.safeRenderIcons();
     // Update live countdowns immediately
     this.updateCountdownElements();
+    window.dispatchEvent(new CustomEvent('patungan_ui_changed'));
   }
 
   // ========================================================
@@ -1087,6 +1089,7 @@ class AppController {
   setPaymentMethod(method) {
     this.selectedPaymentMethod = method;
     this.renderCurrentView();
+    window.dispatchEvent(new CustomEvent('patungan_ui_changed'));
   }
 
   handleProofFileUpload(event) {
@@ -2023,6 +2026,7 @@ class AppController {
 
     document.getElementById('modal-credentials').classList.remove('hidden');
     this.safeRenderIcons();
+    window.dispatchEvent(new CustomEvent('patungan_ui_changed'));
   }
 
   showRejectReasonModal(orderId) {
@@ -2034,6 +2038,7 @@ class AppController {
 
     document.getElementById('modal-reject-reason').classList.remove('hidden');
     this.safeRenderIcons();
+    window.dispatchEvent(new CustomEvent('patungan_ui_changed'));
   }
 
   showTopUpModal() {
@@ -2043,6 +2048,7 @@ class AppController {
 
     document.getElementById('modal-topup').classList.remove('hidden');
     this.safeRenderIcons();
+    window.dispatchEvent(new CustomEvent('patungan_ui_changed'));
   }
 
   processTopUp(amount) {
@@ -2088,6 +2094,7 @@ class AppController {
 
     document.getElementById('modal-user-switch').classList.remove('hidden');
     this.safeRenderIcons();
+    window.dispatchEvent(new CustomEvent('patungan_ui_changed'));
   }
 
   switchUser(userId) {
@@ -2119,6 +2126,7 @@ class AppController {
     const modal = document.getElementById('modal-login');
     if (modal) modal.classList.remove('hidden');
     this.safeRenderIcons();
+    window.dispatchEvent(new CustomEvent('patungan_ui_changed'));
   }
 
   loginUser(userId) {
@@ -2185,6 +2193,7 @@ class AppController {
     try {
       patunganState.simulateSlotRaceCondition(groupId);
       this.showToast('⚡ [Simulator] Kuota grup ini berhasil diisi penuh oleh pengguna lain di background!', 'info');
+      window.dispatchEvent(new CustomEvent('patungan_ui_changed'));
     } catch (e) {
       this.showToast(e.message, 'error');
     }
@@ -2213,6 +2222,7 @@ class AppController {
     const modal = document.getElementById('modal-reupload-proof');
     if (modal) modal.classList.remove('hidden');
     this.safeRenderIcons();
+    window.dispatchEvent(new CustomEvent('patungan_ui_changed'));
   }
 
   handleReuploadFileChange(event) {
@@ -2275,6 +2285,7 @@ class AppController {
   closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.classList.add('hidden');
+    window.dispatchEvent(new CustomEvent('patungan_ui_changed'));
   }
 
   togglePasswordVisibility(inputId, iconId) {
@@ -2363,6 +2374,7 @@ class AppController {
       }
     }
     this.safeRenderIcons();
+    window.dispatchEvent(new CustomEvent('patungan_ui_changed'));
   }
 
   openChatWithPrompt(promptText) {
@@ -2453,6 +2465,7 @@ class AppController {
 
     this.scrollChatToBottom();
     this.safeRenderIcons();
+    window.dispatchEvent(new CustomEvent('patungan_ui_changed'));
   }
 
   scrollChatToBottom() {

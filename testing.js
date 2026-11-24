@@ -317,6 +317,7 @@ class GuidedTestingManager {
     this.isMinimized = false;
     this.isOpen = true;
     this.saveProgress();
+    this.sanitizeWorkspaceForCase('1A');
     if (window.app && typeof window.app.showToast === 'function') {
       window.app.showToast('Progres panduan tes berhasil direset ke Tahap 1.', 'info');
     }
@@ -352,18 +353,23 @@ class GuidedTestingManager {
       this.handleTestEvent(e.detail);
     });
 
+    const handleSync = () => {
+      if (this.progress && this.progress.isSubCaseRunning) {
+        this.renderWidget();
+        if (this.clueActive) {
+          setTimeout(() => this.reapplySpotlight(), 50);
+        }
+      }
+    };
+
+    window.addEventListener('patungan_ui_changed', handleSync);
+
     window.addEventListener('hashchange', () => {
       this.removeExampleBalloon();
-      if (this.progress && this.progress.isSubCaseRunning && this.clueActive) {
-        setTimeout(() => this.reapplySpotlight(), 150);
-      }
+      handleSync();
     });
 
-    window.addEventListener('patungan_state_updated', () => {
-      if (this.progress && this.progress.isSubCaseRunning && this.clueActive) {
-        setTimeout(() => this.reapplySpotlight(), 150);
-      }
-    });
+    window.addEventListener('patungan_state_updated', handleSync);
   }
 
   // --- VALIDASI KETAT PER SUB-TAHAP ---
@@ -430,6 +436,7 @@ class GuidedTestingManager {
     this.progress.isSubCaseRunning = false;
     this.progress.completedCases[subCase.id] = true;
     this.saveProgress();
+    this.sanitizeWorkspaceForCase(subCase.id);
 
     if (window.app && typeof window.app.showToast === 'function') {
       window.app.showToast(`Sub-misi ${subCase.id} selesai. Silakan isi ulasan langkah ini.`, 'success');
@@ -664,8 +671,7 @@ class GuidedTestingManager {
     }
   }
 
-  findSmartTargetElement(curCase) {
-    if (typeof document === 'undefined') return null;
+  getDynamicStepInfo(curCase) {
     const app = window.app || {};
     const currentView = app.currentView || 'home';
     const viewParams = app.viewParams || {};
@@ -673,50 +679,68 @@ class GuidedTestingManager {
 
     switch (curCase.id) {
       case '1A': {
-        if (currentView !== 'home') return document.getElementById('nav-btn-home');
-        const searchInput = document.getElementById('catalog-search');
-        if (searchInput && this.isElementVisible(searchInput)) return searchInput;
-        return document.querySelector('button[onclick*="setCategoryFilter"]');
+        if (currentView !== 'home') {
+          return {
+            stepLabel: 'Langkah 1/2',
+            instruction: 'Buka halaman Beranda katalog produk.',
+            targetSelector: '#nav-btn-home'
+          };
+        }
+        return {
+          stepLabel: 'Langkah 1/1',
+          instruction: 'Ketik minimal 3 huruf (misal "canva") di kolom search katalog atau klik salah satu tab kategori.',
+          targetSelector: '#catalog-search, button[onclick*="setCategoryFilter"]'
+        };
       }
 
       case '1B': {
         const chatWindow = document.getElementById('ai-chat-window');
         const isChatOpen = chatWindow && !chatWindow.classList.contains('hidden') && this.isElementVisible(chatWindow);
         if (!isChatOpen) {
-          return document.getElementById('ai-chat-trigger');
+          return {
+            stepLabel: 'Langkah 1/2',
+            instruction: 'Klik tombol "Tanya Asisten AI" di pojok kanan bawah.',
+            targetSelector: '#ai-chat-trigger'
+          };
+        } else {
+          return {
+            stepLabel: 'Langkah 2/2',
+            instruction: 'Klik tombol quick prompt "Paket < 25rb?" di bagian atas chat (atau ketik pertanyaan paket di bawah 25rb).',
+            targetSelector: '#ai-chat-window button[onclick*="Paket di bawah 25rb"], #ai-chat-window button[onclick*="25rb"], #ai-chat-input'
+          };
         }
-        const quickPrompt = document.querySelector('#ai-chat-window button[onclick*="Paket di bawah 25rb"]') 
-                         || document.querySelector('#ai-chat-window button[onclick*="25rb"]');
-        if (quickPrompt && this.isElementVisible(quickPrompt)) return quickPrompt;
-        return document.getElementById('ai-chat-input');
       }
 
       case '2A': {
         if (currentView !== 'product-detail' || viewParams.productId !== 'prod_canva') {
-          if (currentView !== 'home') {
-            const homeBtn = document.getElementById('nav-btn-home');
-            if (homeBtn) return homeBtn;
-          }
-          const canvaCard = document.getElementById('card-btn-prod_canva') || document.querySelector('button[onclick*="prod_canva"]');
-          if (canvaCard && this.isElementVisible(canvaCard)) return canvaCard;
+          return {
+            stepLabel: 'Langkah 1/2',
+            instruction: 'Klik "Pilih Paket & Grup" pada kartu Canva Pro Team.',
+            targetSelector: '#card-btn-prod_canva, button[onclick*="prod_canva"]'
+          };
+        } else {
+          return {
+            stepLabel: 'Langkah 2/2',
+            instruction: 'Klik tombol durasi "3 Bulan" (Rp 75.000).',
+            targetSelector: '#plan-btn-3_month, button[onclick*="\'3_month\'"]'
+          };
         }
-        const plan3m = document.getElementById('plan-btn-3_month') || document.querySelector('button[onclick*="\'3_month\'"]');
-        if (plan3m && this.isElementVisible(plan3m)) return plan3m;
-        return null;
       }
 
       case '2B': {
         if (currentView !== 'product-detail' || viewParams.productId !== 'prod_spotify') {
-          if (currentView !== 'home') {
-            const homeBtn = document.getElementById('nav-btn-home');
-            if (homeBtn) return homeBtn;
-          }
-          const spotifyCard = document.getElementById('card-btn-prod_spotify') || document.querySelector('button[onclick*="prod_spotify"]');
-          if (spotifyCard && this.isElementVisible(spotifyCard)) return spotifyCard;
+          return {
+            stepLabel: 'Langkah 1/2',
+            instruction: 'Klik "Pilih Paket & Grup" pada kartu Spotify Premium Family.',
+            targetSelector: '#card-btn-prod_spotify, button[onclick*="prod_spotify"]'
+          };
+        } else {
+          return {
+            stepLabel: 'Langkah 2/2',
+            instruction: 'Klik tombol "Request Buka Grup Baru".',
+            targetSelector: '#btn-request-new-group, button[onclick*="requestNewGroup"]'
+          };
         }
-        const reqBtn = document.getElementById('btn-request-new-group') || document.querySelector('button[onclick*="requestNewGroup"]');
-        if (reqBtn && this.isElementVisible(reqBtn)) return reqBtn;
-        return null;
       }
 
       case '3B': {
@@ -725,171 +749,428 @@ class GuidedTestingManager {
         const isLoginModalOpen = modalLogin && !modalLogin.classList.contains('hidden');
 
         if (isLoginModalOpen) {
-          const firstPresetUser = document.querySelector('#login-preset-users > div:first-child') 
-                               || document.querySelector('#login-preset-users button')
-                               || document.getElementById('login-preset-users');
-          if (firstPresetUser) return firstPresetUser;
-        }
-
-        if (!isGuest) {
-          const logoutBtn = document.querySelector('#nav-user-pill button[onclick*="logoutUser"]') 
-                         || document.getElementById('nav-user-pill');
-          if (logoutBtn && this.isElementVisible(logoutBtn)) return logoutBtn;
+          return {
+            stepLabel: 'Langkah 3/3',
+            instruction: 'Pilih akun Budi Santoso di dalam modal login.',
+            targetSelector: '#login-preset-users div:first-child, #login-preset-users'
+          };
+        } else if (!isGuest) {
+          return {
+            stepLabel: 'Langkah 1/3',
+            instruction: 'Klik ikon Logout di profil pojok kanan atas untuk masuk ke Mode Tamu.',
+            targetSelector: '#nav-user-pill button[onclick*="logoutUser"], #nav-user-pill'
+          };
         } else {
-          if (currentView === 'home') {
-            const netflixCard = document.getElementById('card-btn-prod_netflix') 
-                             || document.getElementById('card-btn-prod_canva')
-                             || document.querySelector('button[onclick*="product-detail"]');
-            if (netflixCard && this.isElementVisible(netflixCard)) return netflixCard;
-          } else if (currentView === 'product-detail') {
-            const joinBtn = document.querySelector('button[onclick*="handleJoinGroup"]');
-            if (joinBtn && this.isElementVisible(joinBtn)) return joinBtn;
+          if (currentView !== 'product-detail') {
+            return {
+              stepLabel: 'Langkah 2/3',
+              instruction: 'Buka salah satu produk (misal Netflix) di katalog lalu klik "Gabung Grup Ini".',
+              targetSelector: '#card-btn-prod_netflix, #card-btn-prod_canva'
+            };
+          } else {
+            return {
+              stepLabel: 'Langkah 2/3',
+              instruction: 'Klik tombol "Gabung Grup Ini" untuk memicu pencegatan login.',
+              targetSelector: 'button[onclick*="handleJoinGroup"]'
+            };
           }
         }
-        break;
       }
 
       case '4A': {
         if (currentView !== 'checkout') {
-          if (currentView === 'home') {
-            const card = document.getElementById('card-btn-prod_canva') || document.querySelector('button[onclick*="product-detail"]');
-            if (card && this.isElementVisible(card)) return card;
-          } else if (currentView === 'product-detail') {
-            const joinBtn = document.querySelector('button[onclick*="handleJoinGroup"]');
-            if (joinBtn && this.isElementVisible(joinBtn)) return joinBtn;
-          }
+          return {
+            stepLabel: 'Langkah 1/2',
+            instruction: 'Pilih produk & grup terbuka lalu klik "Gabung Grup Ini".',
+            targetSelector: 'button[onclick*="handleJoinGroup"], #card-btn-prod_canva'
+          };
         } else {
           if (app.selectedPaymentMethod !== 'TRANSFER_MANUAL') {
-            const manualOpt = document.getElementById('payment-method-manual') 
-                           || document.querySelector('div[onclick*="TRANSFER_MANUAL"]');
-            if (manualOpt && this.isElementVisible(manualOpt)) return manualOpt;
+            return {
+              stepLabel: 'Langkah 2/2',
+              instruction: 'Pilih metode Transfer Manual (BCA/Mandiri/QRIS) lalu klik "Konfirmasi & Bayar".',
+              targetSelector: '#payment-method-manual, div[onclick*="TRANSFER_MANUAL"]'
+            };
           } else {
-            const uploadBox = document.getElementById('upload-proof-box');
-            if (uploadBox && !app.uploadedProofFile && this.isElementVisible(uploadBox)) return uploadBox;
-            const submitBtn = document.getElementById('btn-submit-checkout') 
-                           || document.querySelector('button[onclick*="submitCheckout"]');
-            if (submitBtn && this.isElementVisible(submitBtn)) return submitBtn;
+            return {
+              stepLabel: 'Langkah 2/2',
+              instruction: 'Unggah bukti transfer (atau gunakan simulasi) lalu klik "Konfirmasi & Bayar".',
+              targetSelector: '#btn-submit-checkout, button[onclick*="submitCheckout"], #upload-proof-box'
+            };
           }
         }
-        break;
       }
 
       case '4B': {
         if (currentView !== 'checkout') {
-          if (currentView === 'home') {
-            const card = document.getElementById('card-btn-prod_netflix') || document.querySelector('button[onclick*="product-detail"]');
-            if (card && this.isElementVisible(card)) return card;
-          } else if (currentView === 'product-detail') {
-            const joinBtn = document.querySelector('button[onclick*="handleJoinGroup"]');
-            if (joinBtn && this.isElementVisible(joinBtn)) return joinBtn;
-          }
+          return {
+            stepLabel: 'Langkah 1/2',
+            instruction: 'Pilih produk & grup terbuka lalu klik "Gabung Grup Ini".',
+            targetSelector: 'button[onclick*="handleJoinGroup"], #card-btn-prod_netflix'
+          };
         } else {
           if (app.selectedPaymentMethod !== 'SALDO') {
-            const saldoOpt = document.getElementById('payment-method-saldo') 
-                          || document.querySelector('div[onclick*="SALDO"]');
-            if (saldoOpt && this.isElementVisible(saldoOpt)) return saldoOpt;
+            return {
+              stepLabel: 'Langkah 2/2',
+              instruction: 'Pilih metode "Bayar Pakai Saldo Dompet" lalu klik "Konfirmasi & Bayar".',
+              targetSelector: '#payment-method-saldo, div[onclick*="SALDO"]'
+            };
           } else {
-            const submitBtn = document.getElementById('btn-submit-checkout') 
-                           || document.querySelector('button[onclick*="submitCheckout"]');
-            if (submitBtn && this.isElementVisible(submitBtn)) return submitBtn;
+            return {
+              stepLabel: 'Langkah 2/2',
+              instruction: 'Klik tombol "Konfirmasi & Bayar" untuk menyelesaikan pesanan via saldo.',
+              targetSelector: '#btn-submit-checkout, button[onclick*="submitCheckout"]'
+            };
           }
         }
-        break;
       }
 
       case '4C': {
         if (currentView !== 'checkout') {
-          if (currentView === 'home') {
-            const card = document.getElementById('card-btn-prod_canva') || document.querySelector('button[onclick*="product-detail"]');
-            if (card && this.isElementVisible(card)) return card;
-          } else if (currentView === 'product-detail') {
-            const joinBtn = document.querySelector('button[onclick*="handleJoinGroup"]');
-            if (joinBtn && this.isElementVisible(joinBtn)) return joinBtn;
-          }
+          return {
+            stepLabel: 'Langkah 1/3',
+            instruction: 'Masuk ke halaman Checkout grup mana saja.',
+            targetSelector: '#card-btn-prod_canva, button[onclick*="handleJoinGroup"]'
+          };
         } else {
           const grp = patState && typeof patState.getGroupById === 'function' && viewParams.groupId 
                     ? patState.getGroupById(viewParams.groupId) : null;
           const isFull = grp && grp.slotsTaken >= grp.slotsTotal;
           if (!isFull) {
-            const simBtn = document.getElementById('btn-simulate-race') 
-                        || document.querySelector('button[onclick*="simulateRaceCondition"]');
-            if (simBtn && this.isElementVisible(simBtn)) return simBtn;
+            return {
+              stepLabel: 'Langkah 2/3',
+              instruction: 'Klik tombol kuning "Simulasikan Slot Diserobot Orang Lain".',
+              targetSelector: '#btn-simulate-race, button[onclick*="simulateRaceCondition"]'
+            };
           } else {
-            const submitBtn = document.getElementById('btn-submit-checkout') 
-                           || document.querySelector('button[onclick*="submitCheckout"]');
-            if (submitBtn && this.isElementVisible(submitBtn)) return submitBtn;
+            return {
+              stepLabel: 'Langkah 3/3',
+              instruction: 'Klik "Konfirmasi & Bayar" untuk memunculkan pesan error slot penuh.',
+              targetSelector: '#btn-submit-checkout, button[onclick*="submitCheckout"]'
+            };
           }
         }
-        break;
       }
 
       case '5A': {
-        if (currentView !== 'admin') return document.getElementById('nav-btn-admin');
-        const approveBtn = document.querySelector('button[onclick*="adminApproveOrder"]');
-        if (approveBtn && this.isElementVisible(approveBtn)) return approveBtn;
-        break;
+        if (currentView !== 'admin') {
+          return {
+            stepLabel: 'Langkah 1/2',
+            instruction: 'Klik tombol "Mode Admin (Tester)" di navbar.',
+            targetSelector: '#nav-btn-admin'
+          };
+        } else {
+          return {
+            stepLabel: 'Langkah 2/2',
+            instruction: 'Klik tombol "Approve" pada pesanan pending (Menunggu Verifikasi).',
+            targetSelector: 'button[onclick*="adminApproveOrder"]'
+          };
+        }
       }
 
       case '5B': {
-        const orders = patState && typeof patState.getOrders === 'function' ? patState.getOrders() : [];
+        const orders = patState && typeof patState.getOrders === 'function' ? patState.getOrders() : (patState.state ? patState.state.orders : []);
         const hasRejected = orders.some(o => o.status === 'Ditolak');
         if (!hasRejected) {
-          if (currentView !== 'admin') return document.getElementById('nav-btn-admin');
-          const rejectBtn = document.querySelector('button[onclick*="adminRejectPrompt"]');
-          if (rejectBtn && this.isElementVisible(rejectBtn)) return rejectBtn;
-        } else {
-          if (currentView !== 'my-orders') return document.getElementById('nav-btn-orders');
-          const modalReupload = document.getElementById('modal-reupload-proof');
-          const isModalOpen = modalReupload && !modalReupload.classList.contains('hidden');
-          if (isModalOpen) {
-            const submitReupload = document.querySelector('button[onclick*="submitReuploadProof"]');
-            if (submitReupload && this.isElementVisible(submitReupload)) return submitReupload;
+          if (currentView !== 'admin') {
+            return {
+              stepLabel: 'Langkah 1/2',
+              instruction: 'Buka Mode Admin di navbar untuk menolak salah satu pesanan.',
+              targetSelector: '#nav-btn-admin'
+            };
           } else {
-            const reuploadBtn = document.querySelector('button[onclick*="showReuploadProofModal"]');
-            if (reuploadBtn && this.isElementVisible(reuploadBtn)) return reuploadBtn;
+            return {
+              stepLabel: 'Langkah 1/2',
+              instruction: 'Di Mode Admin, klik tombol merah "Reject" pada salah satu pesanan pending.',
+              targetSelector: 'button[onclick*="adminRejectPrompt"]'
+            };
+          }
+        } else {
+          if (currentView !== 'my-orders') {
+            return {
+              stepLabel: 'Langkah 2/2',
+              instruction: 'Buka menu "Pesanan & Dompet" di navbar.',
+              targetSelector: '#nav-btn-orders'
+            };
+          } else {
+            const modalReupload = document.getElementById('modal-reupload-proof');
+            const isModalOpen = modalReupload && !modalReupload.classList.contains('hidden');
+            if (isModalOpen) {
+              return {
+                stepLabel: 'Langkah 2/2',
+                instruction: 'Klik "Kirim Bukti Baru ke Admin" di dalam modal upload ulang.',
+                targetSelector: 'button[onclick*="submitReuploadProof"]'
+              };
+            } else {
+              return {
+                stepLabel: 'Langkah 2/2',
+                instruction: 'Klik tombol "Upload Ulang Bukti" pada pesanan yang ditolak.',
+                targetSelector: 'button[onclick*="showReuploadProofModal"]'
+              };
+            }
           }
         }
-        break;
       }
 
       case '6AB': {
-        if (currentView !== 'admin') return document.getElementById('nav-btn-admin');
-        const fillBtn = document.querySelector('button[onclick*="adminSimulateFillGroup"]');
-        if (fillBtn && this.isElementVisible(fillBtn)) return fillBtn;
-        break;
+        if (currentView !== 'admin') {
+          return {
+            stepLabel: 'Langkah 1/2',
+            instruction: 'Buka "Mode Admin (Tester)" di navbar.',
+            targetSelector: '#nav-btn-admin'
+          };
+        } else {
+          return {
+            stepLabel: 'Langkah 2/2',
+            instruction: 'Klik tombol hijau "Simulasikan Penuh (Aktifkan)" pada salah satu grup OPEN.',
+            targetSelector: 'button[onclick*="adminSimulateFillGroup"]'
+          };
+        }
       }
 
       case '6C': {
-        if (currentView !== 'admin') return document.getElementById('nav-btn-admin');
-        const expireBtn = document.querySelector('button[onclick*="adminSimulateExpireGroup"]');
-        if (expireBtn && this.isElementVisible(expireBtn)) return expireBtn;
-        break;
+        if (currentView !== 'admin') {
+          return {
+            stepLabel: 'Langkah 1/2',
+            instruction: 'Buka "Mode Admin (Tester)" di navbar.',
+            targetSelector: '#nav-btn-admin'
+          };
+        } else {
+          return {
+            stepLabel: 'Langkah 2/2',
+            instruction: 'Klik tombol merah "Simulasikan Waktu Habis (Expired & Refund)" pada salah satu grup OPEN.',
+            targetSelector: 'button[onclick*="adminSimulateExpireGroup"]'
+          };
+        }
       }
 
       case '7': {
-        if (currentView !== 'my-orders') return document.getElementById('nav-btn-orders');
-        const credModal = document.getElementById('modal-credentials');
-        const isCredModalOpen = credModal && !credModal.classList.contains('hidden');
-        if (isCredModalOpen) {
-          const copyBtn = document.querySelector('button[onclick*="copyToClipboard"]') 
-                       || document.querySelector('button[onclick*="togglePasswordVisibility"]');
-          if (copyBtn && this.isElementVisible(copyBtn)) return copyBtn;
+        if (currentView !== 'my-orders') {
+          return {
+            stepLabel: 'Langkah 1/3',
+            instruction: 'Buka menu "Pesanan & Dompet" di navbar.',
+            targetSelector: '#nav-btn-orders'
+          };
         } else {
-          const viewCredBtn = document.querySelector('button[onclick*="showCredentialsModal"]');
-          if (viewCredBtn && this.isElementVisible(viewCredBtn)) return viewCredBtn;
+          const credModal = document.getElementById('modal-credentials');
+          const isCredModalOpen = credModal && !credModal.classList.contains('hidden');
+          if (isCredModalOpen) {
+            return {
+              stepLabel: 'Langkah 3/3',
+              instruction: 'Klik tombol "Salin" atau ikon Mata (Lihat Password) pada kredensial.',
+              targetSelector: 'button[onclick*="copyToClipboard"], button[onclick*="togglePasswordVisibility"]'
+            };
+          } else {
+            return {
+              stepLabel: 'Langkah 2/3',
+              instruction: 'Klik tombol hijau "Lihat Detail Akun" pada pesanan berstatus Aktif.',
+              targetSelector: 'button[onclick*="showCredentialsModal"]'
+            };
+          }
         }
-        break;
       }
+
+      default: {
+        return {
+          stepLabel: 'Langkah 1/1',
+          instruction: curCase.instruction,
+          targetSelector: curCase.targetSelector
+        };
+      }
+    }
+  }
+
+  findSmartTargetElement(curCase) {
+    if (typeof document === 'undefined') return null;
+    const stepInfo = this.getDynamicStepInfo(curCase);
+    if (!stepInfo || !stepInfo.targetSelector) return null;
+
+    const selectors = stepInfo.targetSelector.split(',').map(s => s.trim());
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el && this.isElementVisible(el)) return el;
     }
 
     if (curCase.targetSelector) {
-      const selectors = curCase.targetSelector.split(',').map(s => s.trim());
-      for (const sel of selectors) {
+      const fallbacks = curCase.targetSelector.split(',').map(s => s.trim());
+      for (const sel of fallbacks) {
         const el = document.querySelector(sel);
         if (el && this.isElementVisible(el)) return el;
       }
     }
     return null;
+  }
+
+  // --- AUTO-SANITIZE WORKSPACE ANTAR-TAHAP ---
+  sanitizeWorkspaceForCase(caseId) {
+    if (typeof window === 'undefined') return;
+    const app = window.app;
+    const patState = window.patunganState;
+    if (!app || !patState) return;
+
+    // 1. Reset Pencarian & Filter Katalog jika bukan Case 1A
+    if (caseId !== '1A') {
+      let needsRerender = false;
+      if (app.searchQuery && app.searchQuery !== '') {
+        app.searchQuery = '';
+        needsRerender = true;
+      }
+      if (app.categoryFilter && app.categoryFilter !== 'all') {
+        app.categoryFilter = 'all';
+        needsRerender = true;
+      }
+      if (needsRerender && app.currentView === 'home') {
+        app.renderCurrentView();
+      }
+    }
+
+    // 2. Tutup Jendela AI Chatbot jika bukan Case 1B
+    if (caseId !== '1B') {
+      const chatWin = document.getElementById('ai-chat-window');
+      if (chatWin && !chatWin.classList.contains('hidden')) {
+        chatWin.classList.add('hidden');
+      }
+    }
+
+    // 3. Tutup Semua Modal Terbuka
+    const modalIds = [
+      'modal-credentials',
+      'modal-reject-reason',
+      'modal-topup',
+      'modal-user-switch',
+      'modal-login',
+      'modal-reupload-proof'
+    ];
+    modalIds.forEach(id => {
+      const m = document.getElementById(id);
+      if (m && !m.classList.contains('hidden')) {
+        m.classList.add('hidden');
+      }
+    });
+
+    // 4. Pastikan Kondisi Login: Semua sub-tahap KECUALI 3B, jika Mode Tamu kembalikan ke usr_budi
+    if (caseId !== '3B') {
+      if (typeof patState.isGuest === 'function' && patState.isGuest()) {
+        patState.switchUser('usr_budi');
+        if (typeof app.updateNavbarBadges === 'function') app.updateNavbarBadges();
+        if (typeof app.renderCurrentView === 'function') app.renderCurrentView();
+      }
+    }
+
+    // 5. Data Prasyarat per Sub-Tahap:
+    // a. Sebelum 4A atau 4B: reset checkout race condition error
+    if (caseId === '4A' || caseId === '4B') {
+      app.checkoutRaceConditionError = false;
+    }
+
+    // b. Sebelum 5A atau 5B: Cek apakah ada pesanan 'Menunggu Verifikasi'
+    if (caseId === '5A' || caseId === '5B') {
+      const allOrders = typeof patState.getAllOrders === 'function' ? patState.getAllOrders() : (patState.state ? patState.state.orders : []);
+      const hasPending = allOrders.some(o => o.status === 'Menunggu Verifikasi');
+      if (!hasPending && patState.state && patState.state.orders) {
+        const dummyPending = {
+          id: 'ORD-' + Math.floor(10000 + Math.random() * 90000),
+          userId: 'usr_budi',
+          groupId: 'grp_canva_12',
+          productId: 'prod_canva',
+          productName: 'Canva Pro Team',
+          planKey: '1_month',
+          planName: '1 Bulan',
+          amount: 25000,
+          paymentMethod: 'TRANSFER_MANUAL',
+          status: 'Menunggu Verifikasi',
+          proofFile: 'bukti_transfer_dummy_5ab.jpg',
+          rejectReason: null,
+          createdAt: new Date().toISOString(),
+          activatedAt: null
+        };
+        patState.state.orders.unshift(dummyPending);
+        if (typeof patState.save === 'function') patState.save();
+        if (app.currentView === 'admin' || app.currentView === 'my-orders') {
+          app.renderCurrentView();
+        }
+      }
+    }
+
+    // c. Sebelum 6AB atau 6C: Pastikan minimal ada 1 grup berstatus 'OPEN'
+    if (caseId === '6AB' || caseId === '6C') {
+      const allGroups = typeof patState.getAllGroups === 'function' ? patState.getAllGroups() : (patState.state ? patState.state.subscriptionGroups : []);
+      let openGroup = allGroups.find(g => g.status === 'OPEN' && g.currentSlots < g.maxSlots);
+      if (!openGroup && allGroups.length > 0) {
+        openGroup = allGroups.find(g => g.id === 'grp_canva_12') || allGroups[0];
+        if (openGroup) {
+          openGroup.status = 'OPEN';
+          openGroup.currentSlots = Math.min(3, openGroup.maxSlots - 1);
+          if (typeof patState.save === 'function') patState.save();
+        }
+      }
+      // Khusus 6C: pastikan currentUser memiliki pesanan di grup OPEN tersebut agar efek refund ke saldo langsung terlihat
+      if (caseId === '6C' && patState.state && patState.state.orders) {
+        const curUser = typeof patState.getCurrentUser === 'function' ? patState.getCurrentUser() : null;
+        if (curUser && openGroup) {
+          const userOrders = typeof patState.getUserOrders === 'function' ? patState.getUserOrders() : patState.state.orders.filter(o => o.userId === curUser.id);
+          const hasOrderInOpen = userOrders.some(o => o.groupId === openGroup.id && (o.status === 'Menunggu Kuota' || o.status === 'Menunggu Verifikasi'));
+          if (!hasOrderInOpen) {
+            const refundOrder = {
+              id: 'ORD-' + Math.floor(10000 + Math.random() * 90000),
+              userId: curUser.id,
+              groupId: openGroup.id,
+              productId: openGroup.productId,
+              productName: openGroup.productId === 'prod_canva' ? 'Canva Pro Team' : 'Paket Patungan',
+              planKey: '1_month',
+              planName: '1 Bulan',
+              amount: 25000,
+              paymentMethod: 'SALDO',
+              status: 'Menunggu Kuota',
+              proofFile: null,
+              rejectReason: null,
+              createdAt: new Date().toISOString(),
+              activatedAt: null
+            };
+            patState.state.orders.unshift(refundOrder);
+            if (!openGroup.members.includes(curUser.id)) {
+              openGroup.members.push(curUser.id);
+            }
+            if (typeof patState.save === 'function') patState.save();
+          }
+        }
+      }
+      if (app.currentView === 'admin' || app.currentView === 'my-orders') {
+        app.renderCurrentView();
+      }
+    }
+
+    // d. Sebelum 7: Pastikan currentUser memiliki minimal 1 pesanan berstatus 'Aktif'
+    if (caseId === '7' && patState.state && patState.state.orders) {
+      const curUser = typeof patState.getCurrentUser === 'function' ? patState.getCurrentUser() : null;
+      if (curUser) {
+        const userOrders = typeof patState.getUserOrders === 'function' ? patState.getUserOrders() : patState.state.orders.filter(o => o.userId === curUser.id);
+        const hasActive = userOrders.some(o => o.status === 'Aktif');
+        if (!hasActive) {
+          const activeOrder = {
+            id: 'ORD-' + Math.floor(10000 + Math.random() * 90000),
+            userId: curUser.id,
+            groupId: 'grp_netflix_04',
+            productId: 'prod_netflix',
+            productName: 'Netflix Premium 4K UHD',
+            planKey: '1_month',
+            planName: '1 Bulan',
+            amount: 38000,
+            paymentMethod: 'SALDO',
+            status: 'Aktif',
+            proofFile: null,
+            rejectReason: null,
+            createdAt: new Date().toISOString(),
+            activatedAt: new Date().toISOString()
+          };
+          patState.state.orders.unshift(activeOrder);
+          if (typeof patState.save === 'function') patState.save();
+          if (app.currentView === 'my-orders') {
+            app.renderCurrentView();
+          }
+        }
+      }
+    }
   }
 
   isElementVisible(el) {
@@ -932,6 +1213,10 @@ class GuidedTestingManager {
 
   // --- KONTROL SUB-TES ---
   startActiveSubCase() {
+    const curStage = STAGES_CONFIG[this.progress.currentStageIndex];
+    const curCase = curStage.cases[this.progress.currentSubCaseIndex];
+    this.sanitizeWorkspaceForCase(curCase.id);
+
     this.progress.isSubCaseRunning = true;
     this.isMinimized = true;
     this.clueActive = false;
@@ -942,8 +1227,6 @@ class GuidedTestingManager {
     this.renderWidget();
     this.startIdleClueTimer();
 
-    const curStage = STAGES_CONFIG[this.progress.currentStageIndex];
-    const curCase = curStage.cases[this.progress.currentSubCaseIndex];
     if (window.app && typeof window.app.showToast === 'function') {
       window.app.showToast(`Mulai sub-tes: ${curCase.title}. Panel diperkecil agar layar leluasa.`, 'info');
     }
@@ -1006,12 +1289,13 @@ class GuidedTestingManager {
 
     const curStage = STAGES_CONFIG[this.progress.currentStageIndex] || STAGES_CONFIG[6];
     const curCase = curStage.cases[this.progress.currentSubCaseIndex] || curStage.cases[0];
+    const stepInfo = this.getDynamicStepInfo(curCase);
 
     // 1. JIKA MINIMIZED (BAR KOMPAK DI POJOK KIRI BAWAH)
     if (this.isMinimized && this.progress.isSubCaseRunning) {
       container.innerHTML = `
         <div class="fixed bottom-5 left-5 z-50">
-          <div id="guided-test-minibar" class="bg-white border border-slate-800 shadow-lg px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-lg w-[92vw] sm:w-[460px]">
+          <div id="guided-test-minibar" class="bg-white border border-slate-800 shadow-lg px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-lg w-[92vw] sm:w-[480px]">
             <div class="flex items-center gap-2.5 overflow-hidden">
               <div class="w-8 h-8 bg-slate-900 text-white flex items-center justify-center shrink-0 border border-slate-900">
                 <i data-lucide="${curStage.icon}" class="w-4 h-4 text-emerald-400"></i>
@@ -1020,17 +1304,20 @@ class GuidedTestingManager {
                 <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase">
                   <span>Tahap ${curStage.stage}</span>
                   <span>•</span>
+                  <span class="px-1.5 py-0.2 bg-slate-100 text-slate-800 border border-slate-300 font-bold">${stepInfo.stepLabel}</span>
+                  <span>•</span>
                   <span class="text-emerald-700 flex items-center gap-1 font-mono">
                     <span class="w-2 h-2 bg-emerald-500 rounded-full animate-ping inline-block"></span> Misi Berjalan
                   </span>
                 </div>
                 <div class="font-extrabold text-xs text-slate-900 truncate">${curCase.title}</div>
+                <div class="text-[11px] text-slate-600 truncate font-medium mt-0.5">${stepInfo.instruction}</div>
               </div>
             </div>
 
             ${this.clueActive ? `
               <div class="w-full sm:hidden p-2 bg-amber-50 border border-amber-300 text-amber-950 text-[11px] leading-snug">
-                <b>Clue:</b> ${this.clarifiedClueText || curCase.clueText}
+                <b>Panduan Target:</b> ${this.clarifiedClueText || stepInfo.instruction}
               </div>
             ` : ''}
 
@@ -1051,7 +1338,7 @@ class GuidedTestingManager {
           
           ${this.clueActive ? `
             <div class="hidden sm:block mt-1 p-2 bg-amber-50 border border-amber-300 text-amber-950 text-[11px] leading-snug max-w-lg shadow-md">
-              <b>Clue Bantuan:</b> ${this.clarifiedClueText || curCase.clueText}
+              <b>Panduan Target:</b> ${this.clarifiedClueText || stepInfo.instruction}
             </div>
           ` : ''}
         </div>
@@ -1239,10 +1526,14 @@ class GuidedTestingManager {
 
                 // Sub-case Sedang Aktif
                 if (isCaseActive) {
+                  const stepInfo = this.getDynamicStepInfo(c);
                   return `
                     <div class="p-3 border-2 border-slate-900 bg-white shadow-sm space-y-2.5">
                       <div class="flex items-center justify-between">
-                        <span class="font-extrabold text-xs text-slate-900">${c.title}</span>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                          <span class="font-extrabold text-xs text-slate-900">${c.title}</span>
+                          <span class="px-1.5 py-0.2 bg-slate-100 text-slate-800 border border-slate-300 text-[10px] font-bold">${stepInfo.stepLabel}</span>
+                        </div>
                         ${this.progress.isSubCaseRunning ? `
                           <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-400 px-1.5 py-0.5 flex items-center gap-1 font-mono">
                             <span class="w-1.5 h-1.5 bg-emerald-600 rounded-full animate-ping"></span> Berjalan
@@ -1254,7 +1545,7 @@ class GuidedTestingManager {
                         `}
                       </div>
 
-                      <p class="text-xs text-slate-700 leading-snug font-medium">${c.instruction}</p>
+                      <p class="text-xs text-slate-700 leading-snug font-medium">${stepInfo.instruction}</p>
 
                       <!-- Tombol Aksi Sub-case -->
                       ${!this.progress.isSubCaseRunning ? `
@@ -1284,7 +1575,7 @@ class GuidedTestingManager {
 
                           ${this.clueActive ? `
                             <div class="p-2 bg-amber-50 border border-amber-300 text-amber-950 text-[11px] leading-snug">
-                              <b>Clue:</b> ${this.clarifiedClueText || c.clueText}
+                              <b>Panduan Target:</b> ${this.clarifiedClueText || stepInfo.instruction}
                             </div>
                           ` : ''}
                         </div>
@@ -1407,6 +1698,7 @@ class GuidedTestingManager {
     this.isMinimized = false;
     this.isOpen = true;
     this.saveProgress();
+    this.sanitizeWorkspaceForCase('1A');
     this.renderWidget();
     if (window.app && typeof window.app.navigate === 'function') {
       window.app.navigate('home');
