@@ -13,7 +13,7 @@ const TEST_PROGRESS_KEY = 'patungan_guided_test_progress_v2';
 const FEEDBACK_STORAGE_KEY = 'patungan_feedback_json';
 
 // Definisi 7 Tahap & 13 Sub-Misi Pengujian Terstruktur
-const STAGES_CONFIG = [
+const STAGES_CONFIG = window.STAGES_CONFIG = [
   {
     stage: 1,
     title: 'Tahap 1: Eksplorasi & Pencarian Produk',
@@ -35,10 +35,10 @@ const STAGES_CONFIG = [
         id: '1B',
         title: 'Case 1B (Bantuan AI Chatbot)',
         expectedAction: ['CHATBOT_SENT'],
-        instruction: 'Buka widget "Tanya Asisten AI" di pojok kanan bawah, lalu kirim minimal 1 pertanyaan atau klik salah satu tombol prompt cepat (misal: "Paket di bawah 25rb?").',
+        instruction: 'Buka widget "Tanya Asisten AI" di pojok kanan bawah, lalu klik quick prompt "Paket di bawah 25rb?" atau tanyakan paket hemat/murah di bawah 25rb.',
         hint: 'Klik tombol mengambang hitam bertuliskan "Tanya Asisten AI".',
-        clueText: 'Klik tombol "Tanya Asisten AI" di pojok kanan bawah lalu kirim pesan atau klik prompt cepat.',
-        targetSelector: '#ai-chat-trigger, #ai-chat-input',
+        clueText: 'Buka widget Asisten AI lalu klik tombol quick prompt "Paket di bawah 25rb?" atau ketik pertanyaan tentang paket di bawah 25rb.',
+        targetSelector: '#ai-chat-trigger, #ai-chat-window button[onclick*="Paket di bawah 25rb"], #ai-chat-input',
         viewRequired: 'any'
       }
     ]
@@ -54,20 +54,20 @@ const STAGES_CONFIG = [
         id: '2A',
         title: 'Case 2A (Cek Grup OPEN & Durasi)',
         expectedAction: ['VIEW_PRODUCT_DETAIL_OPEN_GROUP'],
-        instruction: 'Buka detail produk yang memiliki grup OPEN (misal Canva Pro atau Netflix), lalu coba ganti pilihan durasi paket (1 Bulan / 3 Bulan).',
-        hint: 'Klik "Pilih Paket & Grup" pada Canva Pro atau Netflix, lalu klik tombol durasi paket.',
-        clueText: 'Buka detail produk Canva Pro atau Netflix dari katalog, lalu ganti pilihan durasi paket (1 Bulan / 3 Bulan).',
-        targetSelector: '#card-btn-prod_canva, #card-btn-prod_netflix, button[onclick*="prod_canva"], button[onclick*="prod_netflix"], button[onclick*="selectProductPlan"]',
+        instruction: 'Buka detail produk Canva Pro dari katalog, lalu ganti pilihan durasi paket langganan dari 1 Bulan ke 3 Bulan.',
+        hint: 'Klik "Pilih Paket & Grup" pada Canva Pro di katalog, lalu klik tombol durasi "3 Bulan".',
+        clueText: 'Buka Canva Pro dari katalog, lalu klik tombol durasi paket "3 Bulan".',
+        targetSelector: '#card-btn-prod_canva, #plan-btn-3_month, button[onclick*="\'3_month\'"]',
         viewRequired: 'product-detail'
       },
       {
         id: '2B',
         title: 'Case 2B (Cek Produk Tanpa Grup / Expired)',
-        expectedAction: ['REQUEST_NEW_GROUP', 'VIEW_EXPIRED_OR_FULL_GROUP'],
-        instruction: 'Buka detail produk Spotify Premium Family (0 grup) lalu klik "Request Buka Grup Baru", ATAU periksa Canva Grup #11 yang berstatus EXPIRED.',
+        expectedAction: ['REQUEST_NEW_GROUP'],
+        instruction: 'Buka detail produk Spotify Premium Family (0 grup tersedia) di katalog, lalu klik tombol "Request Buka Grup Baru".',
         hint: 'Buka produk Spotify di katalog dan klik "Request Buka Grup Baru".',
-        clueText: 'Buka produk Spotify di katalog dan klik "Request Buka Grup Baru", atau cek Canva Grup #11.',
-        targetSelector: '#btn-request-new-group, #card-btn-prod_spotify, button[onclick*="prod_spotify"], button[onclick*="requestNewGroup"], button[onclick*="prod_canva"]',
+        clueText: 'Buka produk Spotify di katalog, lalu klik tombol hijau "Request Buka Grup Baru".',
+        targetSelector: '#card-btn-prod_spotify, #btn-request-new-group, button[onclick*="requestNewGroup"]',
         viewRequired: 'product-detail'
       }
     ]
@@ -122,10 +122,10 @@ const STAGES_CONFIG = [
         id: '4C',
         title: 'Case 4C (Simulasi Slot Diserobot)',
         expectedAction: ['RACE_CONDITION_TRIGGERED'],
-        instruction: 'Di halaman Checkout, klik tombol kuning "Simulasikan Slot Diserobot Orang Lain (Penuh)", lalu klik "Konfirmasi & Bayar" untuk memverifikasi penolakan bersahabat.',
-        hint: 'Gunakan kotak kuning "Simulator Edge Case" di halaman Checkout.',
-        clueText: 'Klik tombol simulator kuning "Simulasikan Slot Diserobot Orang Lain", lalu klik Konfirmasi & Bayar.',
-        targetSelector: '#btn-simulate-race, button[onclick*="simulateRaceCondition"], button[onclick*="submitCheckout"]',
+        instruction: 'Di halaman Checkout, klik simulator kuning "Simulasikan Slot Diserobot Orang Lain (Penuh)", lalu klik tombol "Konfirmasi & Bayar" untuk menguji penolakan ramah saat slot habis.',
+        hint: 'Gunakan kotak kuning "Simulator Edge Case" di halaman Checkout, lalu klik Konfirmasi & Bayar.',
+        clueText: 'Klik tombol simulator kuning "Simulasikan Slot Diserobot Orang Lain", lalu klik tombol "Konfirmasi & Bayar".',
+        targetSelector: '#btn-simulate-race, #btn-submit-checkout, button[onclick*="submitCheckout"]',
         viewRequired: 'checkout'
       }
     ]
@@ -199,10 +199,10 @@ const STAGES_CONFIG = [
         id: '7',
         title: 'Case 7 (Akses Kredensial Akun Aktif)',
         expectedAction: ['VIEW_CREDENTIALS_AND_INTERACT'],
-        instruction: 'Buka menu "Pesanan & Dompet", klik tombol hijau "Lihat Detail Akun" pada pesanan yang berstatus Aktif, lalu klik toggle "Lihat Password" atau tombol "Salin".',
+        instruction: 'Buka menu "Pesanan & Dompet", klik "Lihat Detail Akun" pada pesanan Aktif, lalu klik tombol intip password atau tombol salin kredensial.',
         hint: 'Pada pesanan berstatus Aktif, klik "Lihat Detail Akun" dan coba salin password atau email.',
-        clueText: 'Buka Pesanan & Dompet, klik "Lihat Detail Akun" pada pesanan Aktif, lalu coba salin atau lihat password.',
-        targetSelector: '#nav-btn-orders, button[onclick*="showCredentialsModal"], button[onclick*="copyToClipboard"], button[onclick*="togglePasswordVisibility"]',
+        clueText: 'Buka Pesanan & Dompet, klik "Lihat Detail Akun" pada pesanan Aktif, lalu coba salin atau intip password.',
+        targetSelector: '#nav-btn-orders, button[onclick*="showCredentialsModal"], button[onclick*="togglePasswordVisibility"], button[onclick*="copyToClipboard"]',
         viewRequired: 'my-orders'
       }
     ]
@@ -214,7 +214,11 @@ class GuidedTestingManager {
     this.isOpen = false;
     this.isMinimized = false;
     this.clueActive = false;
-    this.idleTimer = null;
+    this.clueLevel = 0;
+    this.clarifiedClueText = '';
+    this.idleTimerL1 = null;
+    this.idleTimerL2 = null;
+    this.ghostTypeInterval = null;
     this.selectedStepExperience = '';
     this.selectedWorkflowRating = 0;
     this.selectedUiuxRating = 0;
@@ -349,6 +353,7 @@ class GuidedTestingManager {
     });
 
     window.addEventListener('hashchange', () => {
+      this.removeExampleBalloon();
       if (this.progress && this.progress.isSubCaseRunning && this.clueActive) {
         setTimeout(() => this.reapplySpotlight(), 150);
       }
@@ -393,7 +398,30 @@ class GuidedTestingManager {
       return;
     }
 
-    // 3. Aksi Cocok & Tepat! Selesaikan sub-kasus ini
+    // 3. Validasi Konten Spesifik Tambahan per Sub-Kasus
+    if (currentSubCase.id === '1B' && detail.action === 'CHATBOT_SENT') {
+      const text = (detail.text || '').toLowerCase();
+      const hasBudgetKeyword = text.includes('25') || text.includes('murah') || text.includes('hemat') || text.includes('dibawah');
+      if (!hasBudgetKeyword) {
+        if (window.app && typeof window.app.showToast === 'function') {
+          window.app.showToast("Coba klik quick prompt 'Paket < 25rb?' atau ketik pertanyaan tentang paket di bawah 25rb.", 'info');
+        }
+        this.activateClueSpotlight();
+        return;
+      }
+    }
+
+    if (currentSubCase.id === '2A' && detail.action === 'VIEW_PRODUCT_DETAIL_OPEN_GROUP') {
+      if (detail.planKey !== '3_month') {
+        if (window.app && typeof window.app.showToast === 'function') {
+          window.app.showToast("Silakan ganti pilihan durasi paket ke 3 Bulan.", 'info');
+        }
+        this.activateClueSpotlight();
+        return;
+      }
+    }
+
+    // 4. Aksi Cocok & Tepat! Selesaikan sub-kasus ini
     this.handleSubCaseSuccess(currentStage, currentSubCase);
   }
 
@@ -411,20 +439,188 @@ class GuidedTestingManager {
     this.showStepMicroReviewModal(stage, subCase);
   }
 
-  // --- CLUE & SPOTLIGHT BLINKING ---
+  // --- CLUE & SPOTLIGHT BLINKING (ESKALASI 2 LEVEL) ---
   startIdleClueTimer() {
-    if (this.idleTimer) clearTimeout(this.idleTimer);
-    this.idleTimer = setTimeout(() => {
-      if (this.progress && this.progress.isSubCaseRunning && !this.clueActive) {
-        this.activateClueSpotlight();
-        this.renderWidget();
+    this.clearClueTimers();
+    // Detik ke-5: Clue Level 1 (Blinking Spotlight)
+    this.idleTimerL1 = setTimeout(() => {
+      if (this.progress && this.progress.isSubCaseRunning) {
+        this.activateClueLevel1();
+      }
+    }, 5000);
+
+    // Detik ke-10: Clue Level 2 (Interactive Input Example / Clarified Button Instruction)
+    this.idleTimerL2 = setTimeout(() => {
+      if (this.progress && this.progress.isSubCaseRunning) {
+        this.activateClueLevel2();
+      }
+    }, 10000);
+  }
+
+  clearClueTimers() {
+    if (this.idleTimerL1) clearTimeout(this.idleTimerL1);
+    if (this.idleTimerL2) clearTimeout(this.idleTimerL2);
+    if (this.ghostTypeInterval) clearInterval(this.ghostTypeInterval);
+    this.idleTimerL1 = null;
+    this.idleTimerL2 = null;
+    this.ghostTypeInterval = null;
+  }
+
+  activateClueSpotlight() {
+    this.activateClueLevel1();
+    if (this.idleTimerL2) clearTimeout(this.idleTimerL2);
+    this.idleTimerL2 = setTimeout(() => {
+      if (this.progress && this.progress.isSubCaseRunning) {
+        this.activateClueLevel2();
       }
     }, 5000);
   }
 
-  activateClueSpotlight() {
+  activateClueLevel1() {
     this.clueActive = true;
+    this.clueLevel = 1;
     this.reapplySpotlight();
+    this.renderWidget();
+  }
+
+  activateClueLevel2() {
+    this.clueActive = true;
+    this.clueLevel = 2;
+    const curStage = STAGES_CONFIG[this.progress.currentStageIndex];
+    if (!curStage) return;
+    const curCase = curStage.cases[this.progress.currentSubCaseIndex];
+    if (!curCase) return;
+
+    const targetEl = this.findSmartTargetElement(curCase);
+    if (targetEl && targetEl.tagName === 'INPUT') {
+      this.showInteractiveInputBalloon(targetEl, curCase);
+    } else if (targetEl) {
+      this.clarifyButtonClueText(targetEl, curCase);
+    }
+    this.renderWidget();
+  }
+
+  showInteractiveInputBalloon(inputEl, curCase) {
+    this.removeExampleBalloon();
+    if (typeof document === 'undefined') return;
+
+    const balloon = document.createElement('div');
+    balloon.id = 'guided-example-balloon';
+    balloon.className = 'fixed z-[60] bg-slate-900 text-white p-3 border-2 border-amber-400 shadow-xl max-w-xs text-xs';
+    
+    const exampleVal = curCase.id === '1A' ? 'canva' : 'paket di bawah 25rb';
+    
+    balloon.innerHTML = `
+      <div class="flex items-center justify-between mb-1.5 pb-1 border-b border-slate-700">
+        <span class="text-[10px] uppercase font-bold text-amber-400 flex items-center gap-1">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Contoh Ketikan Bantuan:
+        </span>
+        <button onclick="guidedTesting.removeExampleBalloon()" class="text-slate-400 hover:text-white p-0.5">
+          <i data-lucide="x" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+      <div class="mb-2 text-[11px] text-slate-200 leading-snug">
+        Ketik misalnya: <b class="font-mono text-amber-300" id="ghost-typing-slot"></b><span class="animate-pulse font-mono text-amber-400">|</span>
+      </div>
+      <div class="flex justify-end">
+        <button onclick="guidedTesting.applyExampleInput('${exampleVal}')" 
+                class="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-slate-900 font-extrabold text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm transition-colors">
+          <i data-lucide="check" class="w-3 h-3"></i>
+          <span>Pakai Contoh Ini</span>
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(balloon);
+
+    if (typeof inputEl.getBoundingClientRect === 'function') {
+      const rect = inputEl.getBoundingClientRect();
+      const topPos = Math.max(10, rect.top - 85);
+      const leftPos = Math.max(10, Math.min(window.innerWidth - 300, rect.left));
+      balloon.style.position = 'fixed';
+      balloon.style.top = `${topPos}px`;
+      balloon.style.left = `${leftPos}px`;
+    }
+
+    let charIndex = 0;
+    const ghostEl = document.getElementById('ghost-typing-slot');
+    if (this.ghostTypeInterval) clearInterval(this.ghostTypeInterval);
+    this.ghostTypeInterval = setInterval(() => {
+      if (!ghostEl) return;
+      charIndex = (charIndex + 1) % (exampleVal.length + 8);
+      if (charIndex <= exampleVal.length) {
+        ghostEl.innerText = exampleVal.slice(0, charIndex);
+      } else {
+        ghostEl.innerText = exampleVal;
+      }
+    }, 140);
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+  }
+
+  applyExampleInput(val) {
+    this.removeExampleBalloon();
+    const curStage = STAGES_CONFIG[this.progress.currentStageIndex];
+    const curCase = curStage?.cases[this.progress.currentSubCaseIndex];
+
+    if (curCase && curCase.id === '1A') {
+      const searchInput = document.getElementById('catalog-search');
+      if (searchInput) {
+        searchInput.value = val;
+        searchInput.focus();
+        if (window.app && typeof window.app.handleSearchInput === 'function') {
+          window.app.handleSearchInput(val);
+        }
+      }
+    } else if (curCase && curCase.id === '1B') {
+      const chatInput = document.getElementById('ai-chat-input');
+      if (chatInput) {
+        chatInput.value = val;
+        chatInput.focus();
+        if (window.app && typeof window.app.sendChatMessage === 'function') {
+          window.app.sendChatMessage(val);
+        }
+      }
+    }
+  }
+
+  removeExampleBalloon() {
+    if (this.ghostTypeInterval) clearInterval(this.ghostTypeInterval);
+    this.ghostTypeInterval = null;
+    if (typeof document !== 'undefined') {
+      const b = document.getElementById('guided-example-balloon');
+      if (b) b.remove();
+    }
+  }
+
+  clarifyButtonClueText(targetEl, curCase) {
+    if (!targetEl) return;
+    let label = (targetEl.innerText || targetEl.getAttribute('aria-label') || '').trim().replace(/\s+/g, ' ');
+    if (label.length > 30) label = label.slice(0, 30) + '...';
+
+    if (targetEl.id === 'plan-btn-3_month' || targetEl.getAttribute('onclick')?.includes('3_month')) {
+      this.clarifiedClueText = 'Klik tombol durasi "3 Bulan" yang sedang berkedip kuning.';
+    } else if (targetEl.id === 'btn-request-new-group' || targetEl.getAttribute('onclick')?.includes('requestNewGroup')) {
+      this.clarifiedClueText = 'Klik tombol hijau "Request Buka Grup Baru" yang sedang berkedip.';
+    } else if (targetEl.id === 'btn-simulate-race' || targetEl.getAttribute('onclick')?.includes('simulateRaceCondition')) {
+      this.clarifiedClueText = 'Klik tombol simulator kuning "Simulasikan Slot Diserobot Orang Lain (Penuh)".';
+    } else if (targetEl.id === 'btn-submit-checkout' || targetEl.getAttribute('onclick')?.includes('submitCheckout')) {
+      this.clarifiedClueText = 'Klik tombol "Konfirmasi & Bayar" yang sedang berkedip.';
+    } else if (targetEl.getAttribute('onclick')?.includes('adminApproveOrder')) {
+      this.clarifiedClueText = 'Klik tombol hijau "Approve" pada pesanan yang menunggu verifikasi.';
+    } else if (targetEl.getAttribute('onclick')?.includes('adminRejectPrompt')) {
+      this.clarifiedClueText = 'Klik tombol merah "Reject" pada pesanan transfer.';
+    } else if (targetEl.getAttribute('onclick')?.includes('showReuploadProofModal')) {
+      this.clarifiedClueText = 'Klik tombol "Upload Ulang Bukti" pada pesanan yang ditolak.';
+    } else if (targetEl.getAttribute('onclick')?.includes('submitReuploadProof')) {
+      this.clarifiedClueText = 'Klik tombol "Kirim Bukti Baru ke Admin" di dalam jendela modal.';
+    } else if (targetEl.getAttribute('onclick')?.includes('togglePasswordVisibility') || targetEl.getAttribute('onclick')?.includes('copyToClipboard')) {
+      this.clarifiedClueText = 'Klik ikon mata untuk intip password atau tombol "Salin" kredensial.';
+    } else if (label) {
+      this.clarifiedClueText = `Klik tombol "${label}" yang sedang berkedip kuning.`;
+    }
   }
 
   reapplySpotlight() {
@@ -441,9 +637,10 @@ class GuidedTestingManager {
       targetEl.classList.add('guided-spotlight-active');
 
       if (!targetEl.querySelector('.spotlight-badge')) {
+        const isInput = targetEl.tagName === 'INPUT';
         const badge = document.createElement('span');
         badge.className = 'spotlight-badge absolute -top-3 left-2 z-50 bg-amber-400 text-slate-900 text-[10px] font-black uppercase px-2 py-0.5 border border-slate-900 shadow-sm pointer-events-none flex items-center gap-1';
-        badge.innerHTML = `<i data-lucide="arrow-down" class="w-3 h-3"></i><span>Klik di sini</span>`;
+        badge.innerHTML = `<i data-lucide="${isInput ? 'edit-2' : 'arrow-down'}" class="w-3 h-3"></i><span>${isInput ? 'Ketik di sini' : 'Klik di sini'}</span>`;
         if (window.getComputedStyle(targetEl).position === 'static') {
           targetEl.style.position = 'relative';
         }
@@ -456,36 +653,242 @@ class GuidedTestingManager {
       if (typeof targetEl.scrollIntoView === 'function') {
         targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
+
+      if (this.clueLevel === 2) {
+        if (targetEl.tagName === 'INPUT') {
+          this.showInteractiveInputBalloon(targetEl, curCase);
+        } else {
+          this.clarifyButtonClueText(targetEl, curCase);
+        }
+      }
     }
   }
 
   findSmartTargetElement(curCase) {
     if (typeof document === 'undefined') return null;
-    const currentView = window.app ? window.app.currentView : 'home';
+    const app = window.app || {};
+    const currentView = app.currentView || 'home';
+    const viewParams = app.viewParams || {};
+    const patState = window.patunganState;
 
-    // Jika misi membutuhkan view tertentu namun user sedang di view lain, sorot tombol navigasi ke view tersebut
-    if (curCase.viewRequired === 'admin' && currentView !== 'admin') {
-      const adminNav = document.getElementById('nav-btn-admin');
-      if (adminNav) return adminNav;
-    }
-    if (curCase.viewRequired === 'my-orders' && currentView !== 'my-orders') {
-      const ordersNav = document.getElementById('nav-btn-orders');
-      if (ordersNav) return ordersNav;
-    }
-    if (curCase.viewRequired === 'home' && currentView !== 'home') {
-      const homeNav = document.getElementById('nav-btn-home');
-      if (homeNav) return homeNav;
-    }
+    switch (curCase.id) {
+      case '1A': {
+        if (currentView !== 'home') return document.getElementById('nav-btn-home');
+        const searchInput = document.getElementById('catalog-search');
+        if (searchInput && this.isElementVisible(searchInput)) return searchInput;
+        return document.querySelector('button[onclick*="setCategoryFilter"]');
+      }
 
-    // Cari elemen berdasarkan targetSelector
-    const selectors = curCase.targetSelector.split(',').map(s => s.trim());
-    for (const sel of selectors) {
-      const el = document.querySelector(sel);
-      if (el && this.isElementVisible(el)) {
-        return el;
+      case '1B': {
+        const chatWindow = document.getElementById('ai-chat-window');
+        const isChatOpen = chatWindow && !chatWindow.classList.contains('hidden') && this.isElementVisible(chatWindow);
+        if (!isChatOpen) {
+          return document.getElementById('ai-chat-trigger');
+        }
+        const quickPrompt = document.querySelector('#ai-chat-window button[onclick*="Paket di bawah 25rb"]') 
+                         || document.querySelector('#ai-chat-window button[onclick*="25rb"]');
+        if (quickPrompt && this.isElementVisible(quickPrompt)) return quickPrompt;
+        return document.getElementById('ai-chat-input');
+      }
+
+      case '2A': {
+        if (currentView !== 'product-detail' || viewParams.productId !== 'prod_canva') {
+          if (currentView !== 'home') {
+            const homeBtn = document.getElementById('nav-btn-home');
+            if (homeBtn) return homeBtn;
+          }
+          const canvaCard = document.getElementById('card-btn-prod_canva') || document.querySelector('button[onclick*="prod_canva"]');
+          if (canvaCard && this.isElementVisible(canvaCard)) return canvaCard;
+        }
+        const plan3m = document.getElementById('plan-btn-3_month') || document.querySelector('button[onclick*="\'3_month\'"]');
+        if (plan3m && this.isElementVisible(plan3m)) return plan3m;
+        return null;
+      }
+
+      case '2B': {
+        if (currentView !== 'product-detail' || viewParams.productId !== 'prod_spotify') {
+          if (currentView !== 'home') {
+            const homeBtn = document.getElementById('nav-btn-home');
+            if (homeBtn) return homeBtn;
+          }
+          const spotifyCard = document.getElementById('card-btn-prod_spotify') || document.querySelector('button[onclick*="prod_spotify"]');
+          if (spotifyCard && this.isElementVisible(spotifyCard)) return spotifyCard;
+        }
+        const reqBtn = document.getElementById('btn-request-new-group') || document.querySelector('button[onclick*="requestNewGroup"]');
+        if (reqBtn && this.isElementVisible(reqBtn)) return reqBtn;
+        return null;
+      }
+
+      case '3B': {
+        const isGuest = patState && typeof patState.isGuest === 'function' ? patState.isGuest() : false;
+        const modalLogin = document.getElementById('modal-login');
+        const isLoginModalOpen = modalLogin && !modalLogin.classList.contains('hidden');
+
+        if (isLoginModalOpen) {
+          const firstPresetUser = document.querySelector('#login-preset-users > div:first-child') 
+                               || document.querySelector('#login-preset-users button')
+                               || document.getElementById('login-preset-users');
+          if (firstPresetUser) return firstPresetUser;
+        }
+
+        if (!isGuest) {
+          const logoutBtn = document.querySelector('#nav-user-pill button[onclick*="logoutUser"]') 
+                         || document.getElementById('nav-user-pill');
+          if (logoutBtn && this.isElementVisible(logoutBtn)) return logoutBtn;
+        } else {
+          if (currentView === 'home') {
+            const netflixCard = document.getElementById('card-btn-prod_netflix') 
+                             || document.getElementById('card-btn-prod_canva')
+                             || document.querySelector('button[onclick*="product-detail"]');
+            if (netflixCard && this.isElementVisible(netflixCard)) return netflixCard;
+          } else if (currentView === 'product-detail') {
+            const joinBtn = document.querySelector('button[onclick*="handleJoinGroup"]');
+            if (joinBtn && this.isElementVisible(joinBtn)) return joinBtn;
+          }
+        }
+        break;
+      }
+
+      case '4A': {
+        if (currentView !== 'checkout') {
+          if (currentView === 'home') {
+            const card = document.getElementById('card-btn-prod_canva') || document.querySelector('button[onclick*="product-detail"]');
+            if (card && this.isElementVisible(card)) return card;
+          } else if (currentView === 'product-detail') {
+            const joinBtn = document.querySelector('button[onclick*="handleJoinGroup"]');
+            if (joinBtn && this.isElementVisible(joinBtn)) return joinBtn;
+          }
+        } else {
+          if (app.selectedPaymentMethod !== 'TRANSFER_MANUAL') {
+            const manualOpt = document.getElementById('payment-method-manual') 
+                           || document.querySelector('div[onclick*="TRANSFER_MANUAL"]');
+            if (manualOpt && this.isElementVisible(manualOpt)) return manualOpt;
+          } else {
+            const uploadBox = document.getElementById('upload-proof-box');
+            if (uploadBox && !app.uploadedProofFile && this.isElementVisible(uploadBox)) return uploadBox;
+            const submitBtn = document.getElementById('btn-submit-checkout') 
+                           || document.querySelector('button[onclick*="submitCheckout"]');
+            if (submitBtn && this.isElementVisible(submitBtn)) return submitBtn;
+          }
+        }
+        break;
+      }
+
+      case '4B': {
+        if (currentView !== 'checkout') {
+          if (currentView === 'home') {
+            const card = document.getElementById('card-btn-prod_netflix') || document.querySelector('button[onclick*="product-detail"]');
+            if (card && this.isElementVisible(card)) return card;
+          } else if (currentView === 'product-detail') {
+            const joinBtn = document.querySelector('button[onclick*="handleJoinGroup"]');
+            if (joinBtn && this.isElementVisible(joinBtn)) return joinBtn;
+          }
+        } else {
+          if (app.selectedPaymentMethod !== 'SALDO') {
+            const saldoOpt = document.getElementById('payment-method-saldo') 
+                          || document.querySelector('div[onclick*="SALDO"]');
+            if (saldoOpt && this.isElementVisible(saldoOpt)) return saldoOpt;
+          } else {
+            const submitBtn = document.getElementById('btn-submit-checkout') 
+                           || document.querySelector('button[onclick*="submitCheckout"]');
+            if (submitBtn && this.isElementVisible(submitBtn)) return submitBtn;
+          }
+        }
+        break;
+      }
+
+      case '4C': {
+        if (currentView !== 'checkout') {
+          if (currentView === 'home') {
+            const card = document.getElementById('card-btn-prod_canva') || document.querySelector('button[onclick*="product-detail"]');
+            if (card && this.isElementVisible(card)) return card;
+          } else if (currentView === 'product-detail') {
+            const joinBtn = document.querySelector('button[onclick*="handleJoinGroup"]');
+            if (joinBtn && this.isElementVisible(joinBtn)) return joinBtn;
+          }
+        } else {
+          const grp = patState && typeof patState.getGroupById === 'function' && viewParams.groupId 
+                    ? patState.getGroupById(viewParams.groupId) : null;
+          const isFull = grp && grp.slotsTaken >= grp.slotsTotal;
+          if (!isFull) {
+            const simBtn = document.getElementById('btn-simulate-race') 
+                        || document.querySelector('button[onclick*="simulateRaceCondition"]');
+            if (simBtn && this.isElementVisible(simBtn)) return simBtn;
+          } else {
+            const submitBtn = document.getElementById('btn-submit-checkout') 
+                           || document.querySelector('button[onclick*="submitCheckout"]');
+            if (submitBtn && this.isElementVisible(submitBtn)) return submitBtn;
+          }
+        }
+        break;
+      }
+
+      case '5A': {
+        if (currentView !== 'admin') return document.getElementById('nav-btn-admin');
+        const approveBtn = document.querySelector('button[onclick*="adminApproveOrder"]');
+        if (approveBtn && this.isElementVisible(approveBtn)) return approveBtn;
+        break;
+      }
+
+      case '5B': {
+        const orders = patState && typeof patState.getOrders === 'function' ? patState.getOrders() : [];
+        const hasRejected = orders.some(o => o.status === 'Ditolak');
+        if (!hasRejected) {
+          if (currentView !== 'admin') return document.getElementById('nav-btn-admin');
+          const rejectBtn = document.querySelector('button[onclick*="adminRejectPrompt"]');
+          if (rejectBtn && this.isElementVisible(rejectBtn)) return rejectBtn;
+        } else {
+          if (currentView !== 'my-orders') return document.getElementById('nav-btn-orders');
+          const modalReupload = document.getElementById('modal-reupload-proof');
+          const isModalOpen = modalReupload && !modalReupload.classList.contains('hidden');
+          if (isModalOpen) {
+            const submitReupload = document.querySelector('button[onclick*="submitReuploadProof"]');
+            if (submitReupload && this.isElementVisible(submitReupload)) return submitReupload;
+          } else {
+            const reuploadBtn = document.querySelector('button[onclick*="showReuploadProofModal"]');
+            if (reuploadBtn && this.isElementVisible(reuploadBtn)) return reuploadBtn;
+          }
+        }
+        break;
+      }
+
+      case '6AB': {
+        if (currentView !== 'admin') return document.getElementById('nav-btn-admin');
+        const fillBtn = document.querySelector('button[onclick*="adminSimulateFillGroup"]');
+        if (fillBtn && this.isElementVisible(fillBtn)) return fillBtn;
+        break;
+      }
+
+      case '6C': {
+        if (currentView !== 'admin') return document.getElementById('nav-btn-admin');
+        const expireBtn = document.querySelector('button[onclick*="adminSimulateExpireGroup"]');
+        if (expireBtn && this.isElementVisible(expireBtn)) return expireBtn;
+        break;
+      }
+
+      case '7': {
+        if (currentView !== 'my-orders') return document.getElementById('nav-btn-orders');
+        const credModal = document.getElementById('modal-credentials');
+        const isCredModalOpen = credModal && !credModal.classList.contains('hidden');
+        if (isCredModalOpen) {
+          const copyBtn = document.querySelector('button[onclick*="copyToClipboard"]') 
+                       || document.querySelector('button[onclick*="togglePasswordVisibility"]');
+          if (copyBtn && this.isElementVisible(copyBtn)) return copyBtn;
+        } else {
+          const viewCredBtn = document.querySelector('button[onclick*="showCredentialsModal"]');
+          if (viewCredBtn && this.isElementVisible(viewCredBtn)) return viewCredBtn;
+        }
+        break;
       }
     }
 
+    if (curCase.targetSelector) {
+      const selectors = curCase.targetSelector.split(',').map(s => s.trim());
+      for (const sel of selectors) {
+        const el = document.querySelector(sel);
+        if (el && this.isElementVisible(el)) return el;
+      }
+    }
     return null;
   }
 
@@ -510,9 +913,12 @@ class GuidedTestingManager {
   }
 
   clearClueSpotlight() {
-    if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.clearClueTimers();
+    this.removeExampleBalloon();
     this.clearSpotlightDomOnly();
     this.clueActive = false;
+    this.clueLevel = 0;
+    this.clarifiedClueText = '';
   }
 
   toggleClueSpotlight() {
@@ -529,6 +935,8 @@ class GuidedTestingManager {
     this.progress.isSubCaseRunning = true;
     this.isMinimized = true;
     this.clueActive = false;
+    this.clueLevel = 0;
+    this.clarifiedClueText = '';
     this.clearClueSpotlight();
     this.saveProgress();
     this.renderWidget();
@@ -622,7 +1030,7 @@ class GuidedTestingManager {
 
             ${this.clueActive ? `
               <div class="w-full sm:hidden p-2 bg-amber-50 border border-amber-300 text-amber-950 text-[11px] leading-snug">
-                <b>Clue:</b> ${curCase.clueText}
+                <b>Clue:</b> ${this.clarifiedClueText || curCase.clueText}
               </div>
             ` : ''}
 
@@ -643,7 +1051,7 @@ class GuidedTestingManager {
           
           ${this.clueActive ? `
             <div class="hidden sm:block mt-1 p-2 bg-amber-50 border border-amber-300 text-amber-950 text-[11px] leading-snug max-w-lg shadow-md">
-              <b>Clue Bantuan:</b> ${curCase.clueText}
+              <b>Clue Bantuan:</b> ${this.clarifiedClueText || curCase.clueText}
             </div>
           ` : ''}
         </div>
@@ -876,7 +1284,7 @@ class GuidedTestingManager {
 
                           ${this.clueActive ? `
                             <div class="p-2 bg-amber-50 border border-amber-300 text-amber-950 text-[11px] leading-snug">
-                              <b>Clue:</b> ${c.clueText}
+                              <b>Clue:</b> ${this.clarifiedClueText || c.clueText}
                             </div>
                           ` : ''}
                         </div>

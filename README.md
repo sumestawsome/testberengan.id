@@ -153,9 +153,10 @@ Untuk memberikan pengalaman uji coba yang terarah, bebas distraksi, dan presisi 
    - Begitu tombol **"Mulai Sub-Tes Ini"** diklik, jendela panduan otomatis mengecil menjadi bar kompak di pojok kiri bawah (`bottom-5 left-5`).
    - Mini-bar hanya memuat nama misi yang sedang aktif, status berkedip *"Misi Berjalan"*, tombol bantuan *"Lihat Clue"*, dan tombol *"Perbesar"*, sehingga layar tetap leluasa untuk eksplorasi.
 
-4. **Clue Otomatis & Blinking Spotlight Animation:**
-   - Jika tester tidak melakukan aksi selama 5 detik (atau melakukan klik yang keliru), sistem otomatis menyalakan **Blinking Spotlight** kuning menyala (`outline: 3px solid #f59e0b` berdenyut) pada elemen tombol/input sasaran disertai pin badge bertuliskan *"Klik di sini"*.
-   - Target finder cerdas juga dapat menyorot tombol navbar yang relevan jika tester sedang berada di halaman yang berbeda.
+4. **Eskalasi Clue 2 Level & Multi-Step Dynamic Spotlight:**
+   - **Multi-Step Dynamic Spotlight:** Spotlight mendeteksi kondisi DOM dan tahapan alur secara bertahap dalam satu sub-misi (misal: Case 1B menyorot trigger chat saat jendela tertutup lalu berpindah ke quick prompt & input saat jendela terbuka; Case 2A menyorot tombol durasi 3 Bulan di detail produk; Case 4C menyorot tombol simulator kuning lalu berpindah ke "Konfirmasi & Bayar" setelah grup penuh).
+   - **Detik ke-5 (Clue Level 1):** Jika tester diam 5 detik (atau salah klik), elemen target berkedip kuning menyala (`guided-spotlight-active`) dengan badge *"Klik di sini"* / *"Ketik di sini"*.
+   - **Detik ke-10 (Clue Level 2):** Jika tester masih belum menyelesaikan langkah, sistem menampilkan balon contoh ketikan interaktif (animasi ketik ghost preview + tombol *"Pakai Contoh Ini"*) untuk input teks, atau memperjelas instruksi tombol spesifik di mini-bar.
 
 5. **Mini-Evaluasi Setiap Selesai 1 Sub-Tahap (Step Micro-Review):**
    - Setelah menyelesaikan aksi, sistem tidak langsung meloncat ke langkah berikutnya, melainkan memunculkan modal evaluasi cepat: *"Bagaimana pengalamanmu di langkah ini?"*.

@@ -316,6 +316,7 @@ class AppController {
           <div class="relative sm:w-72">
             <input type="text" id="catalog-search" value="${this.searchQuery}" 
                    oninput="app.handleSearchInput(this.value)"
+                   onkeydown="app.handleSearchKeyDown(event)"
                    placeholder="Cari aplikasi atau fitur..." 
                    class="w-full pl-9 pr-3 py-2 text-xs border-2 border-slate-900 bg-white focus:outline-none focus:bg-blue-50 font-medium" />
             <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
@@ -438,8 +439,26 @@ class AppController {
   handleSearchInput(val) {
     this.searchQuery = val;
     this.renderCurrentView();
-    if (val && val.trim().length > 0) {
-      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'SEARCH_CATALOG', query: val } }));
+    const searchInput = document.getElementById('catalog-search');
+    if (searchInput) {
+      searchInput.focus();
+      searchInput.setSelectionRange(val.length, val.length);
+    }
+    if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
+    if (val && val.trim().length >= 3) {
+      this.searchDebounceTimer = setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'SEARCH_CATALOG', query: val.trim() } }));
+      }, 700);
+    }
+  }
+
+  handleSearchKeyDown(event) {
+    if (event.key === 'Enter') {
+      const val = event.target.value;
+      if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
+      if (val && val.trim().length >= 3) {
+        window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'SEARCH_CATALOG', query: val.trim() } }));
+      }
     }
   }
 
@@ -474,16 +493,6 @@ class AppController {
     const currentPlanKey = this.selectedPlanDuration || '1_month';
     const plan = product.plans[currentPlanKey] || product.plans['1_month'];
     const groups = patunganState.getGroupsByProduct(product.id);
-
-    // Emit event untuk Guided Testing
-    const hasOpenGroup = groups.some(g => g.status === 'OPEN');
-    if (hasOpenGroup) {
-      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'VIEW_PRODUCT_DETAIL_OPEN_GROUP', productId } }));
-    }
-    const hasExpiredOrZero = groups.some(g => g.status === 'EXPIRED') || groups.length === 0;
-    if (hasExpiredOrZero) {
-      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'VIEW_EXPIRED_OR_FULL_GROUP', productId } }));
-    }
 
     return `
       <!-- BREADCRUMB -->
@@ -521,7 +530,7 @@ class AppController {
                 ${Object.entries(product.plans).map(([key, p]) => {
                   const isSelected = key === currentPlanKey;
                   return `
-                    <button onclick="app.selectProductPlan('${product.id}', '${key}')" 
+                    <button id="plan-btn-${key}" onclick="app.selectProductPlan('${product.id}', '${key}')" 
                             class="p-2.5 text-left border-2 transition-all ${
                               isSelected 
                                 ? 'border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]' 
@@ -741,7 +750,9 @@ class AppController {
   selectProductPlan(productId, planKey) {
     this.selectedPlanDuration = planKey;
     this.navigate('product-detail', { productId, planKey });
-    window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'VIEW_PRODUCT_DETAIL_OPEN_GROUP', productId, planKey } }));
+    if (planKey === '3_month') {
+      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'VIEW_PRODUCT_DETAIL_OPEN_GROUP', productId, planKey } }));
+    }
   }
 
   // ========================================================
@@ -883,7 +894,7 @@ class AppController {
               <div class="space-y-3 mb-6">
                 
                 <!-- Option 1: Bayar Pakai Saldo -->
-                <div onclick="app.setPaymentMethod('SALDO')" 
+                <div id="payment-method-saldo" onclick="app.setPaymentMethod('SALDO')" 
                      class="p-4 border-2 cursor-pointer transition-all ${
                        this.selectedPaymentMethod === 'SALDO' 
                          ? 'border-slate-900 bg-slate-50 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]' 
@@ -938,7 +949,7 @@ class AppController {
                 </div>
 
                 <!-- Option 2: Transfer Manual -->
-                <div onclick="app.setPaymentMethod('TRANSFER_MANUAL')" 
+                <div id="payment-method-manual" onclick="app.setPaymentMethod('TRANSFER_MANUAL')" 
                      class="p-4 border-2 cursor-pointer transition-all ${
                        this.selectedPaymentMethod === 'TRANSFER_MANUAL' 
                          ? 'border-slate-900 bg-slate-50 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]' 
@@ -984,7 +995,7 @@ class AppController {
                         <label class="block text-xs font-bold text-slate-800 mb-1">
                           Upload Bukti Transfer <span class="text-red-500">*</span>
                         </label>
-                        <div class="border-2 border-dashed border-slate-400 p-4 text-center bg-white hover:bg-slate-50 transition-all cursor-pointer"
+                        <div id="upload-proof-box" class="border-2 border-dashed border-slate-400 p-4 text-center bg-white hover:bg-slate-50 transition-all cursor-pointer"
                              onclick="document.getElementById('proof-file-input').click()">
                           <input type="file" id="proof-file-input" class="hidden" accept="image/*" 
                                  onchange="app.handleProofFileUpload(event)" />
@@ -1047,7 +1058,7 @@ class AppController {
               </div>
 
               <!-- Submit Button -->
-              <button onclick="app.submitCheckout('${group.id}', '${planKey}')" 
+              <button id="btn-submit-checkout" onclick="app.submitCheckout('${group.id}', '${planKey}')" 
                       class="w-full py-3 bg-slate-900 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-wider border-2 border-slate-900 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all flex items-center justify-center gap-2">
                 <i data-lucide="lock" class="w-4 h-4"></i>
                 <span>Konfirmasi & Bayar</span>
@@ -2012,7 +2023,6 @@ class AppController {
 
     document.getElementById('modal-credentials').classList.remove('hidden');
     this.safeRenderIcons();
-    window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'VIEW_CREDENTIALS_AND_INTERACT', groupId } }));
   }
 
   showRejectReasonModal(orderId) {
@@ -2175,7 +2185,6 @@ class AppController {
     try {
       patunganState.simulateSlotRaceCondition(groupId);
       this.showToast('⚡ [Simulator] Kuota grup ini berhasil diisi penuh oleh pengguna lain di background!', 'info');
-      window.dispatchEvent(new CustomEvent('patungan_test_event', { detail: { action: 'RACE_CONDITION_TRIGGERED', groupId } }));
     } catch (e) {
       this.showToast(e.message, 'error');
     }
