@@ -1,18 +1,18 @@
 /**
- * testing.js - Mode Panduan Pengujian Interaktif (Guided Usability Testing ala Duolingo)
- * & Form Evaluasi Tester (JSON Storage + Export)
+ * testing.js - Mode Panduan Pengujian Interaktif (Strict Sequential Mode ala Duolingo)
+ * & Form Evaluasi Tester (Google Sheets Apps Script Integration)
  * 
- * Sistem pelacak 7 tahap pengujian yang otomatis mendeteksi aksi tester,
- * membuka tahap secara sekuensial, dan mengumpulkan evaluasi terstruktur dalam format JSON.
+ * Sistem pengujian ketat per sub-tahap dengan tombol mulai, auto-minimize drawer,
+ * blinking spotlight clue otomatis saat idle/salah klik, dan mini-evaluasi di setiap sub-tahap.
  */
 
 // Konfigurasi Webhook Pengumpulan Evaluasi (Google Sheets Apps Script)
 const FEEDBACK_ENDPOINT = 'https://script.google.com/macros/s/AKfycbykaOSYXww74FwrN4NoMvxWEu4kLzryNe2H-OB-mr1_S9j2U1-4Gdunjt3inVyZWGdU/exec';
 
-const TEST_PROGRESS_KEY = 'patungan_guided_test_progress_v1';
+const TEST_PROGRESS_KEY = 'patungan_guided_test_progress_v2';
 const FEEDBACK_STORAGE_KEY = 'patungan_feedback_json';
 
-// Definisi 7 Tahap Pengujian Terstruktur
+// Definisi 7 Tahap & 13 Sub-Misi Pengujian Terstruktur
 const STAGES_CONFIG = [
   {
     stage: 1,
@@ -24,14 +24,22 @@ const STAGES_CONFIG = [
       {
         id: '1A',
         title: 'Case 1A (Cari Mandiri)',
+        expectedAction: ['SEARCH_CATALOG', 'FILTER_CATEGORY'],
         instruction: 'Ketik nama aplikasi di kolom search katalog (misal: "netflix" atau "canva") ATAU klik salah satu tab kategori (Streaming, Desain, dll).',
-        hint: 'Coba ketik kata kunci di kolom pencarian pada bagian atas katalog.'
+        hint: 'Coba ketik kata kunci di kolom pencarian pada bagian atas katalog.',
+        clueText: 'Ketik kata kunci di kolom pencarian atau klik salah satu tab kategori di bagian atas katalog.',
+        targetSelector: '#catalog-search, button[onclick*="setCategoryFilter"]',
+        viewRequired: 'home'
       },
       {
         id: '1B',
         title: 'Case 1B (Bantuan AI Chatbot)',
+        expectedAction: ['CHATBOT_SENT'],
         instruction: 'Buka widget "Tanya Asisten AI" di pojok kanan bawah, lalu kirim minimal 1 pertanyaan atau klik salah satu tombol prompt cepat (misal: "Paket di bawah 25rb?").',
-        hint: 'Klik tombol mengambang hitam bertuliskan "Tanya Asisten AI".'
+        hint: 'Klik tombol mengambang hitam bertuliskan "Tanya Asisten AI".',
+        clueText: 'Klik tombol "Tanya Asisten AI" di pojok kanan bawah lalu kirim pesan atau klik prompt cepat.',
+        targetSelector: '#ai-chat-trigger, #ai-chat-input',
+        viewRequired: 'any'
       }
     ]
   },
@@ -45,14 +53,22 @@ const STAGES_CONFIG = [
       {
         id: '2A',
         title: 'Case 2A (Cek Grup OPEN & Durasi)',
+        expectedAction: ['VIEW_PRODUCT_DETAIL_OPEN_GROUP'],
         instruction: 'Buka detail produk yang memiliki grup OPEN (misal Canva Pro atau Netflix), lalu coba ganti pilihan durasi paket (1 Bulan / 3 Bulan).',
-        hint: 'Klik "Pilih Paket & Grup" pada Canva Pro atau Netflix, lalu klik tombol durasi paket.'
+        hint: 'Klik "Pilih Paket & Grup" pada Canva Pro atau Netflix, lalu klik tombol durasi paket.',
+        clueText: 'Buka detail produk Canva Pro atau Netflix dari katalog, lalu ganti pilihan durasi paket (1 Bulan / 3 Bulan).',
+        targetSelector: '#card-btn-prod_canva, #card-btn-prod_netflix, button[onclick*="prod_canva"], button[onclick*="prod_netflix"], button[onclick*="selectProductPlan"]',
+        viewRequired: 'product-detail'
       },
       {
         id: '2B',
         title: 'Case 2B (Cek Produk Tanpa Grup / Expired)',
+        expectedAction: ['REQUEST_NEW_GROUP', 'VIEW_EXPIRED_OR_FULL_GROUP'],
         instruction: 'Buka detail produk Spotify Premium Family (0 grup) lalu klik "Request Buka Grup Baru", ATAU periksa Canva Grup #11 yang berstatus EXPIRED.',
-        hint: 'Buka produk Spotify di katalog dan klik "Request Buka Grup Baru".'
+        hint: 'Buka produk Spotify di katalog dan klik "Request Buka Grup Baru".',
+        clueText: 'Buka produk Spotify di katalog dan klik "Request Buka Grup Baru", atau cek Canva Grup #11.',
+        targetSelector: '#btn-request-new-group, #card-btn-prod_spotify, button[onclick*="prod_spotify"], button[onclick*="requestNewGroup"], button[onclick*="prod_canva"]',
+        viewRequired: 'product-detail'
       }
     ]
   },
@@ -66,8 +82,12 @@ const STAGES_CONFIG = [
       {
         id: '3B',
         title: 'Case 3B (Cegat Login & Auto-Redirect)',
+        expectedAction: ['GUEST_INTERCEPT_AND_LOGIN'],
         instruction: 'Klik tombol Logout di profil navbar untuk masuk ke "Mode Tamu", lalu klik tombol "Gabung Grup Ini" pada salah satu produk hingga muncul Modal Login, kemudian masuk kembali (misal pilih akun Budi Santoso).',
-        hint: 'Logout dulu dari navbar, lalu coba klik "Gabung Grup Ini". Setelah modal login muncul, pilih Budi Santoso.'
+        hint: 'Logout dulu dari navbar, lalu coba klik "Gabung Grup Ini". Setelah modal login muncul, pilih Budi Santoso.',
+        clueText: 'Klik tombol logout di navbar untuk masuk ke Mode Tamu, lalu klik tombol "Gabung Grup Ini" dan pilih akun Budi Santoso.',
+        targetSelector: '#nav-user-pill button[onclick*="logoutUser"], #nav-user-pill, button[onclick*="handleJoinGroup"], #login-preset-users div:first-child',
+        viewRequired: 'any'
       }
     ]
   },
@@ -81,20 +101,32 @@ const STAGES_CONFIG = [
       {
         id: '4A',
         title: 'Case 4A (Transfer Manual + Upload Bukti)',
+        expectedAction: ['CHECKOUT_TRANSFER_MANUAL'],
         instruction: 'Lakukan checkout pada salah satu grup dengan memilih metode "Transfer Manual (BCA/Mandiri/QRIS)", unggah file bukti transfer, lalu klik Konfirmasi & Bayar.',
-        hint: 'Di checkout, pilih Transfer Manual dan upload bukti transfer.'
+        hint: 'Di checkout, pilih Transfer Manual dan upload bukti transfer.',
+        clueText: 'Di halaman Checkout, pilih metode Transfer Manual lalu klik "Konfirmasi & Bayar".',
+        targetSelector: 'button[onclick*="handleJoinGroup"], button[onclick*="TRANSFER_MANUAL"], button[onclick*="submitCheckout"]',
+        viewRequired: 'checkout'
       },
       {
         id: '4B',
         title: 'Case 4B (Bayar Pakai Saldo Dompet)',
+        expectedAction: ['CHECKOUT_SALDO'],
         instruction: 'Lakukan checkout dengan metode "Bayar Pakai Saldo Dompet". Jika saldo kurang, lakukan Top Up Saldo terlebih dahulu.',
-        hint: 'Pilih metode Bayar Pakai Saldo lalu selesaikan pembayaran.'
+        hint: 'Pilih metode Bayar Pakai Saldo lalu selesaikan pembayaran.',
+        clueText: 'Lakukan checkout grup lain dengan metode "Bayar Pakai Saldo Dompet" dan selesaikan pembayaran.',
+        targetSelector: 'button[onclick*="handleJoinGroup"], button[onclick*="SALDO"], button[onclick*="submitCheckout"]',
+        viewRequired: 'checkout'
       },
       {
         id: '4C',
         title: 'Case 4C (Simulasi Slot Diserobot)',
+        expectedAction: ['RACE_CONDITION_TRIGGERED'],
         instruction: 'Di halaman Checkout, klik tombol kuning "Simulasikan Slot Diserobot Orang Lain (Penuh)", lalu klik "Konfirmasi & Bayar" untuk memverifikasi penolakan bersahabat.',
-        hint: 'Gunakan kotak kuning "Simulator Edge Case" di halaman Checkout.'
+        hint: 'Gunakan kotak kuning "Simulator Edge Case" di halaman Checkout.',
+        clueText: 'Klik tombol simulator kuning "Simulasikan Slot Diserobot Orang Lain", lalu klik Konfirmasi & Bayar.',
+        targetSelector: '#btn-simulate-race, button[onclick*="simulateRaceCondition"], button[onclick*="submitCheckout"]',
+        viewRequired: 'checkout'
       }
     ]
   },
@@ -108,14 +140,22 @@ const STAGES_CONFIG = [
       {
         id: '5A',
         title: 'Case 5A (Approve Pesanan Pending)',
+        expectedAction: ['ADMIN_APPROVE_ORDER'],
         instruction: 'Buka menu "Mode Admin (Tester)" di navbar, lalu klik tombol "Approve" pada salah satu pesanan berstatus Menunggu Verifikasi.',
-        hint: 'Klik tombol Mode Admin (Tester) berwarna kuning di navbar, lalu Approve pesanan pending.'
+        hint: 'Klik tombol Mode Admin (Tester) berwarna kuning di navbar, lalu Approve pesanan pending.',
+        clueText: 'Buka menu Mode Admin (Tester) di navbar, lalu klik tombol Approve pada pesanan pending.',
+        targetSelector: '#nav-btn-admin, button[onclick*="adminApproveOrder"]',
+        viewRequired: 'admin'
       },
       {
         id: '5B',
         title: 'Case 5B (Reject & Upload Ulang Bukti)',
+        expectedAction: ['REUPLOAD_PROOF_SUBMITTED'],
         instruction: 'Di Mode Admin, klik "Reject" pada pesanan transfer, lalu buka menu "Pesanan & Dompet" dan klik tombol "Upload Ulang Bukti" pada pesanan yang ditolak tersebut.',
-        hint: 'Tolak salah satu pesanan di Mode Admin, lalu buka Pesanan Saya dan unggah bukti baru.'
+        hint: 'Tolak salah satu pesanan di Mode Admin, lalu buka Pesanan Saya dan unggah bukti baru.',
+        clueText: 'Tolak pesanan di Mode Admin, lalu ke Pesanan & Dompet dan klik "Upload Ulang Bukti".',
+        targetSelector: 'button[onclick*="adminRejectPrompt"], #nav-btn-orders, button[onclick*="showReuploadProofModal"], button[onclick*="submitReuploadProof"]',
+        viewRequired: 'admin'
       }
     ]
   },
@@ -128,15 +168,23 @@ const STAGES_CONFIG = [
     cases: [
       {
         id: '6AB',
-        title: 'Case 6A/B (Grup Penuh ➔ Akun Aktif)',
+        title: 'Case 6A/B (Grup Penuh - Akun Aktif)',
+        expectedAction: ['GROUP_ACTIVATED'],
         instruction: 'Buat salah satu grup menjadi penuh dan AKTIF (bisa dengan bergabung slot ke-5 Netflix Grup #05, atau klik "Simulasikan Penuh" pada grup OPEN di Mode Admin).',
-        hint: 'Gunakan tombol "Simulasikan Penuh (Aktifkan)" di Mode Admin.'
+        hint: 'Gunakan tombol "Simulasikan Penuh (Aktifkan)" di Mode Admin.',
+        clueText: 'Buka Mode Admin lalu klik tombol hijau "Simulasikan Penuh (Aktifkan)" pada salah satu grup OPEN.',
+        targetSelector: '#nav-btn-admin, button[onclick*="adminSimulateFillGroup"]',
+        viewRequired: 'admin'
       },
       {
         id: '6C',
         title: 'Case 6C (Simulasi Waktu Habis & Auto-Refund)',
+        expectedAction: ['SIMULATE_EXPIRE_REFUND'],
         instruction: 'Di Mode Admin, klik tombol merah "Simulasikan Waktu Habis (Expired & Refund)" pada salah satu grup OPEN, lalu periksa saldo bertambah di halaman Pesanan & Dompet.',
-        hint: 'Klik tombol "Simulasikan Waktu Habis" di Mode Admin untuk menguji pengembalian dana 100%.'
+        hint: 'Klik tombol "Simulasikan Waktu Habis" di Mode Admin untuk menguji pengembalian dana 100%.',
+        clueText: 'Buka Mode Admin lalu klik tombol merah "Simulasikan Waktu Habis (Expired & Refund)".',
+        targetSelector: '#nav-btn-admin, button[onclick*="adminSimulateExpireGroup"]',
+        viewRequired: 'admin'
       }
     ]
   },
@@ -150,8 +198,12 @@ const STAGES_CONFIG = [
       {
         id: '7',
         title: 'Case 7 (Akses Kredensial Akun Aktif)',
+        expectedAction: ['VIEW_CREDENTIALS_AND_INTERACT'],
         instruction: 'Buka menu "Pesanan & Dompet", klik tombol hijau "Lihat Detail Akun" pada pesanan yang berstatus Aktif, lalu klik toggle "Lihat Password" atau tombol "Salin".',
-        hint: 'Pada pesanan berstatus Aktif, klik "Lihat Detail Akun" dan coba salin password atau email.'
+        hint: 'Pada pesanan berstatus Aktif, klik "Lihat Detail Akun" dan coba salin password atau email.',
+        clueText: 'Buka Pesanan & Dompet, klik "Lihat Detail Akun" pada pesanan Aktif, lalu coba salin atau lihat password.',
+        targetSelector: '#nav-btn-orders, button[onclick*="showCredentialsModal"], button[onclick*="copyToClipboard"], button[onclick*="togglePasswordVisibility"]',
+        viewRequired: 'my-orders'
       }
     ]
   }
@@ -160,12 +212,17 @@ const STAGES_CONFIG = [
 class GuidedTestingManager {
   constructor() {
     this.isOpen = false;
+    this.isMinimized = false;
+    this.clueActive = false;
+    this.idleTimer = null;
+    this.selectedStepExperience = '';
     this.selectedWorkflowRating = 0;
     this.selectedUiuxRating = 0;
     this.init();
   }
 
   init() {
+    this.injectSpotlightStyles();
     this.loadProgress();
     this.bindEventListeners();
     this.renderWidget();
@@ -173,6 +230,43 @@ class GuidedTestingManager {
     // Tampilkan Intro Study Case otomatis untuk tester baru
     if (!this.progress.introSeen) {
       setTimeout(() => this.showIntroModal(), 600);
+    }
+  }
+
+  injectSpotlightStyles() {
+    if (typeof document === 'undefined') return;
+    if (document.getElementById('guided-spotlight-styles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'guided-spotlight-styles';
+    style.textContent = `
+      .guided-spotlight-active {
+        outline: 3px solid #f59e0b !important;
+        outline-offset: 3px !important;
+        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.3), 0 0 16px rgba(245, 158, 11, 0.7) !important;
+        animation: guided-spotlight-pulse 1.2s infinite ease-in-out !important;
+        position: relative !important;
+      }
+      @keyframes guided-spotlight-pulse {
+        0%, 100% {
+          outline-color: #f59e0b;
+          box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25), 0 0 12px rgba(245, 158, 11, 0.5);
+        }
+        50% {
+          outline-color: #fbbf24;
+          box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.45), 0 0 22px rgba(251, 191, 36, 0.85);
+        }
+      }
+      .spotlight-badge {
+        animation: guided-badge-bounce 0.9s infinite alternate ease-in-out;
+      }
+      @keyframes guided-badge-bounce {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(-4px); }
+      }
+    `;
+    if (document.head) {
+      document.head.appendChild(style);
     }
   }
 
@@ -184,8 +278,8 @@ class GuidedTestingManager {
     } else {
       try {
         this.progress = JSON.parse(raw);
-        // Fallback jika ada data yang corrupt
-        if (!this.progress.stages) {
+        // Validasi struktur state v2
+        if (typeof this.progress.currentStageIndex === 'undefined' || !this.progress.completedCases) {
           this.progress = this.getDefaultProgress();
           this.saveProgress();
         }
@@ -197,32 +291,27 @@ class GuidedTestingManager {
   }
 
   getDefaultProgress() {
-    const stagesData = {};
-    STAGES_CONFIG.forEach(s => {
-      stagesData[s.stage] = {
-        completed: false,
-        cases: {}
-      };
-      s.cases.forEach(c => {
-        stagesData[s.stage].cases[c.id] = false;
-      });
-    });
-
     return {
       introSeen: false,
-      currentStage: 1,
-      stages: stagesData
+      currentStageIndex: 0,
+      currentSubCaseIndex: 0,
+      isSubCaseRunning: false,
+      completedCases: {},
+      stepReviews: [],
+      isFinished: false
     };
   }
 
   saveProgress() {
     localStorage.setItem(TEST_PROGRESS_KEY, JSON.stringify(this.progress));
-    this.updateWidgetUI();
   }
 
   resetProgress() {
+    this.clearClueSpotlight();
     this.progress = this.getDefaultProgress();
     this.progress.introSeen = true;
+    this.isMinimized = false;
+    this.isOpen = true;
     this.saveProgress();
     if (window.app && typeof window.app.showToast === 'function') {
       window.app.showToast('Progres panduan tes berhasil direset ke Tahap 1.', 'info');
@@ -231,17 +320,25 @@ class GuidedTestingManager {
   }
 
   resetCurrentStage() {
-    const cur = this.progress.currentStage;
-    if (this.progress.stages[cur]) {
-      this.progress.stages[cur].completed = false;
-      Object.keys(this.progress.stages[cur].cases).forEach(k => {
-        this.progress.stages[cur].cases[k] = false;
+    this.clearClueSpotlight();
+    const curStage = STAGES_CONFIG[this.progress.currentStageIndex];
+    if (curStage) {
+      curStage.cases.forEach(c => {
+        if (this.progress.completedCases) delete this.progress.completedCases[c.id];
       });
+      this.progress.currentSubCaseIndex = 0;
+      this.progress.isSubCaseRunning = false;
       this.saveProgress();
       if (window.app && typeof window.app.showToast === 'function') {
-        window.app.showToast(`Sub-misi Tahap ${cur} telah direset. Silakan ulangi pengujian.`, 'info');
+        window.app.showToast(`Sub-misi Tahap ${curStage.stage} telah direset. Silakan mulai kembali.`, 'info');
       }
       this.renderWidget();
+    }
+  }
+
+  confirmResetAll() {
+    if (confirm('Apakah Anda yakin ingin mereset seluruh progres panduan tes? Semua centang tahap akan dikembalikan ke Tahap 1.')) {
+      this.resetProgress();
     }
   }
 
@@ -250,124 +347,242 @@ class GuidedTestingManager {
     window.addEventListener('patungan_test_event', (e) => {
       this.handleTestEvent(e.detail);
     });
+
+    window.addEventListener('hashchange', () => {
+      if (this.progress && this.progress.isSubCaseRunning && this.clueActive) {
+        setTimeout(() => this.reapplySpotlight(), 150);
+      }
+    });
+
+    window.addEventListener('patungan_state_updated', () => {
+      if (this.progress && this.progress.isSubCaseRunning && this.clueActive) {
+        setTimeout(() => this.reapplySpotlight(), 150);
+      }
+    });
   }
 
+  // --- VALIDASI KETAT PER SUB-TAHAP ---
   handleTestEvent(detail) {
     if (!detail || !detail.action) return;
-    const action = detail.action;
-    let progressChanged = false;
+    if (this.progress.isFinished) return;
 
-    // TAHAP 1
-    if (action === 'SEARCH_CATALOG' || action === 'FILTER_CATEGORY') {
-      progressChanged = this.markCaseDone(1, '1A') || progressChanged;
-    }
-    if (action === 'CHATBOT_SENT') {
-      progressChanged = this.markCaseDone(1, '1B') || progressChanged;
-    }
+    const currentStage = STAGES_CONFIG[this.progress.currentStageIndex];
+    if (!currentStage) return;
 
-    // TAHAP 2
-    if (action === 'VIEW_PRODUCT_DETAIL_OPEN_GROUP') {
-      progressChanged = this.markCaseDone(2, '2A') || progressChanged;
-    }
-    if (action === 'REQUEST_NEW_GROUP' || action === 'VIEW_EXPIRED_OR_FULL_GROUP') {
-      progressChanged = this.markCaseDone(2, '2B') || progressChanged;
+    const currentSubCase = currentStage.cases[this.progress.currentSubCaseIndex];
+    if (!currentSubCase) return;
+
+    // 1. Cek apakah sub-kasus ini sedang berstatus "RUNNING"
+    if (!this.progress.isSubCaseRunning) {
+      if (window.app && typeof window.app.showToast === 'function') {
+        window.app.showToast(`Klik "Mulai Sub-Tes Ini" pada panduan misi sebelum menjalankan aksi.`, 'info');
+      }
+      return;
     }
 
-    // TAHAP 3
-    if (action === 'GUEST_INTERCEPT_AND_LOGIN') {
-      progressChanged = this.markCaseDone(3, '3B') || progressChanged;
+    // 2. Cek apakah aksi cocok dengan sub-kasus yang aktif
+    const matchesAction = currentSubCase.expectedAction.includes(detail.action);
+
+    if (!matchesAction) {
+      // Tester melakukan aksi yang tidak sesuai dengan sub-kasus aktif
+      if (window.app && typeof window.app.showToast === 'function') {
+        window.app.showToast(`Misi aktif saat ini: ${currentSubCase.title}. Selesaikan misi ini terlebih dahulu.`, 'info');
+      }
+      // Langsung picu clue dan kedip-kedip spotlight karena aksi salah
+      this.activateClueSpotlight();
+      return;
     }
 
-    // TAHAP 4
-    if (action === 'CHECKOUT_TRANSFER_MANUAL') {
-      progressChanged = this.markCaseDone(4, '4A') || progressChanged;
-    }
-    if (action === 'CHECKOUT_SALDO') {
-      progressChanged = this.markCaseDone(4, '4B') || progressChanged;
-    }
-    if (action === 'RACE_CONDITION_TRIGGERED') {
-      progressChanged = this.markCaseDone(4, '4C') || progressChanged;
+    // 3. Aksi Cocok & Tepat! Selesaikan sub-kasus ini
+    this.handleSubCaseSuccess(currentStage, currentSubCase);
+  }
+
+  handleSubCaseSuccess(stage, subCase) {
+    this.clearClueSpotlight();
+    this.progress.isSubCaseRunning = false;
+    this.progress.completedCases[subCase.id] = true;
+    this.saveProgress();
+
+    if (window.app && typeof window.app.showToast === 'function') {
+      window.app.showToast(`Sub-misi ${subCase.id} selesai. Silakan isi ulasan langkah ini.`, 'success');
     }
 
-    // TAHAP 5
-    if (action === 'ADMIN_APPROVE_ORDER') {
-      progressChanged = this.markCaseDone(5, '5A') || progressChanged;
-    }
-    if (action === 'REUPLOAD_PROOF_SUBMITTED') {
-      progressChanged = this.markCaseDone(5, '5B') || progressChanged;
-    }
+    this.renderWidget();
+    this.showStepMicroReviewModal(stage, subCase);
+  }
 
-    // TAHAP 6
-    if (action === 'GROUP_ACTIVATED') {
-      progressChanged = this.markCaseDone(6, '6AB') || progressChanged;
-    }
-    if (action === 'SIMULATE_EXPIRE_REFUND') {
-      progressChanged = this.markCaseDone(6, '6C') || progressChanged;
-    }
+  // --- CLUE & SPOTLIGHT BLINKING ---
+  startIdleClueTimer() {
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.idleTimer = setTimeout(() => {
+      if (this.progress && this.progress.isSubCaseRunning && !this.clueActive) {
+        this.activateClueSpotlight();
+        this.renderWidget();
+      }
+    }, 5000);
+  }
 
-    // TAHAP 7
-    if (action === 'VIEW_CREDENTIALS_AND_INTERACT') {
-      progressChanged = this.markCaseDone(7, '7') || progressChanged;
-    }
+  activateClueSpotlight() {
+    this.clueActive = true;
+    this.reapplySpotlight();
+  }
 
-    if (progressChanged) {
-      this.checkStageCompletion();
-      this.saveProgress();
-      this.renderWidget();
+  reapplySpotlight() {
+    if (typeof document === 'undefined') return;
+    this.clearSpotlightDomOnly();
+
+    const curStage = STAGES_CONFIG[this.progress.currentStageIndex];
+    if (!curStage) return;
+    const curCase = curStage.cases[this.progress.currentSubCaseIndex];
+    if (!curCase) return;
+
+    const targetEl = this.findSmartTargetElement(curCase);
+    if (targetEl) {
+      targetEl.classList.add('guided-spotlight-active');
+
+      if (!targetEl.querySelector('.spotlight-badge')) {
+        const badge = document.createElement('span');
+        badge.className = 'spotlight-badge absolute -top-3 left-2 z-50 bg-amber-400 text-slate-900 text-[10px] font-black uppercase px-2 py-0.5 border border-slate-900 shadow-sm pointer-events-none flex items-center gap-1';
+        badge.innerHTML = `<i data-lucide="arrow-down" class="w-3 h-3"></i><span>Klik di sini</span>`;
+        if (window.getComputedStyle(targetEl).position === 'static') {
+          targetEl.style.position = 'relative';
+        }
+        targetEl.appendChild(badge);
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+          window.lucide.createIcons();
+        }
+      }
+
+      if (typeof targetEl.scrollIntoView === 'function') {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }
   }
 
-  markCaseDone(stageNum, caseId) {
-    if (!this.progress.stages[stageNum]) return false;
-    if (!this.progress.stages[stageNum].cases[caseId]) {
-      this.progress.stages[stageNum].cases[caseId] = true;
-      if (window.app && typeof window.app.showToast === 'function') {
-        window.app.showToast(`🎯 Sub-misi ${caseId} Berhasil Diselesaikan!`, 'success');
+  findSmartTargetElement(curCase) {
+    if (typeof document === 'undefined') return null;
+    const currentView = window.app ? window.app.currentView : 'home';
+
+    // Jika misi membutuhkan view tertentu namun user sedang di view lain, sorot tombol navigasi ke view tersebut
+    if (curCase.viewRequired === 'admin' && currentView !== 'admin') {
+      const adminNav = document.getElementById('nav-btn-admin');
+      if (adminNav) return adminNav;
+    }
+    if (curCase.viewRequired === 'my-orders' && currentView !== 'my-orders') {
+      const ordersNav = document.getElementById('nav-btn-orders');
+      if (ordersNav) return ordersNav;
+    }
+    if (curCase.viewRequired === 'home' && currentView !== 'home') {
+      const homeNav = document.getElementById('nav-btn-home');
+      if (homeNav) return homeNav;
+    }
+
+    // Cari elemen berdasarkan targetSelector
+    const selectors = curCase.targetSelector.split(',').map(s => s.trim());
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el && this.isElementVisible(el)) {
+        return el;
       }
+    }
+
+    return null;
+  }
+
+  isElementVisible(el) {
+    if (!el) return false;
+    if (typeof window === 'undefined') return true;
+    try {
+      const style = window.getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+      return el.offsetWidth > 0 || el.offsetHeight > 0 || (el.getClientRects && el.getClientRects().length > 0);
+    } catch (e) {
       return true;
     }
-    return false;
   }
 
-  checkStageCompletion() {
-    const cur = this.progress.currentStage;
-    if (cur > 7) return;
+  clearSpotlightDomOnly() {
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll('.guided-spotlight-active').forEach(el => {
+      el.classList.remove('guided-spotlight-active');
+    });
+    document.querySelectorAll('.spotlight-badge').forEach(b => b.remove());
+  }
 
-    const stageObj = this.progress.stages[cur];
-    if (!stageObj) return;
+  clearClueSpotlight() {
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.clearSpotlightDomOnly();
+    this.clueActive = false;
+  }
 
-    // Cek apakah seluruh cases di tahap aktif sudah true
-    const allDone = Object.values(stageObj.cases).every(v => v === true);
-    if (allDone && !stageObj.completed) {
-      stageObj.completed = true;
-
-      if (cur < 7) {
-        this.progress.currentStage = cur + 1;
-        if (window.app && typeof window.app.showToast === 'function') {
-          window.app.showToast(`🎉 Tahap ${cur} Selesai! Membuka Tahap ${cur + 1}.`, 'success');
-        }
-      } else {
-        // Tahap 7 Selesai -> Seluruh pengujian komplit!
-        this.progress.currentStage = 8;
-        if (window.app && typeof window.app.showToast === 'function') {
-          window.app.showToast('🏆 Luar biasa! Seluruh 7 tahap pengujian telah selesai. Silakan isi form evaluasi.', 'success');
-        }
-        setTimeout(() => this.showEvaluationModal(), 800);
-      }
+  toggleClueSpotlight() {
+    if (this.clueActive) {
+      this.clearClueSpotlight();
+    } else {
+      this.activateClueSpotlight();
     }
+    this.renderWidget();
+  }
+
+  // --- KONTROL SUB-TES ---
+  startActiveSubCase() {
+    this.progress.isSubCaseRunning = true;
+    this.isMinimized = true;
+    this.clueActive = false;
+    this.clearClueSpotlight();
+    this.saveProgress();
+    this.renderWidget();
+    this.startIdleClueTimer();
+
+    const curStage = STAGES_CONFIG[this.progress.currentStageIndex];
+    const curCase = curStage.cases[this.progress.currentSubCaseIndex];
+    if (window.app && typeof window.app.showToast === 'function') {
+      window.app.showToast(`Mulai sub-tes: ${curCase.title}. Panel diperkecil agar layar leluasa.`, 'info');
+    }
+  }
+
+  pauseActiveSubCase() {
+    this.progress.isSubCaseRunning = false;
+    this.clearClueSpotlight();
+    this.saveProgress();
+    this.renderWidget();
+    if (window.app && typeof window.app.showToast === 'function') {
+      window.app.showToast('Sub-tes dijeda.', 'info');
+    }
+  }
+
+  minimizePanel() {
+    this.isMinimized = true;
+    this.renderWidget();
+  }
+
+  unminimizePanel() {
+    this.isMinimized = false;
+    this.isOpen = true;
+    this.renderWidget();
+  }
+
+  togglePanel() {
+    this.isOpen = !this.isOpen;
+    this.isMinimized = false;
+    this.renderWidget();
+  }
+
+  getCompletedCasesCount() {
+    if (!this.progress.completedCases) return 0;
+    return Object.values(this.progress.completedCases).filter(v => v === true).length;
   }
 
   getCompletedStagesCount() {
     let count = 0;
-    for (let i = 1; i <= 7; i++) {
-      if (this.progress.stages[i] && this.progress.stages[i].completed) {
-        count++;
-      }
-    }
+    STAGES_CONFIG.forEach(s => {
+      const allDone = s.cases.every(c => this.progress.completedCases && this.progress.completedCases[c.id]);
+      if (allDone) count++;
+    });
     return count;
   }
 
-  // --- RENDER WIDGET PANEL ---
+  // --- RENDER WIDGET PANEL & MINIBAR ---
   renderWidget() {
     let container = document.getElementById('guided-test-container');
     if (!container) {
@@ -376,33 +591,95 @@ class GuidedTestingManager {
       document.body.appendChild(container);
     }
 
-    const completedCount = this.getCompletedStagesCount();
-    const percent = Math.round((completedCount / 7) * 100);
+    const completedCases = this.getCompletedCasesCount();
+    const totalCases = 13;
+    const completedStages = this.getCompletedStagesCount();
+    const percent = Math.round((completedCases / totalCases) * 100);
 
+    const curStage = STAGES_CONFIG[this.progress.currentStageIndex] || STAGES_CONFIG[6];
+    const curCase = curStage.cases[this.progress.currentSubCaseIndex] || curStage.cases[0];
+
+    // 1. JIKA MINIMIZED (BAR KOMPAK DI POJOK KIRI BAWAH)
+    if (this.isMinimized && this.progress.isSubCaseRunning) {
+      container.innerHTML = `
+        <div class="fixed bottom-5 left-5 z-50">
+          <div id="guided-test-minibar" class="bg-white border border-slate-800 shadow-lg px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-lg w-[92vw] sm:w-[460px]">
+            <div class="flex items-center gap-2.5 overflow-hidden">
+              <div class="w-8 h-8 bg-slate-900 text-white flex items-center justify-center shrink-0 border border-slate-900">
+                <i data-lucide="${curStage.icon}" class="w-4 h-4 text-emerald-400"></i>
+              </div>
+              <div class="truncate">
+                <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase">
+                  <span>Tahap ${curStage.stage}</span>
+                  <span>•</span>
+                  <span class="text-emerald-700 flex items-center gap-1 font-mono">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-ping inline-block"></span> Misi Berjalan
+                  </span>
+                </div>
+                <div class="font-extrabold text-xs text-slate-900 truncate">${curCase.title}</div>
+              </div>
+            </div>
+
+            ${this.clueActive ? `
+              <div class="w-full sm:hidden p-2 bg-amber-50 border border-amber-300 text-amber-950 text-[11px] leading-snug">
+                <b>Clue:</b> ${curCase.clueText}
+              </div>
+            ` : ''}
+
+            <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+              <button onclick="guidedTesting.toggleClueSpotlight()" 
+                      class="px-2.5 py-1.5 text-xs font-bold border border-slate-300 hover:border-slate-800 bg-slate-50 flex items-center gap-1 transition-colors">
+                <i data-lucide="help-circle" class="w-3.5 h-3.5 text-amber-600"></i>
+                <span class="hidden sm:inline">${this.clueActive ? 'Tutup Clue' : 'Lihat Clue'}</span>
+                <span class="sm:hidden">Clue</span>
+              </button>
+              <button onclick="guidedTesting.unminimizePanel()" 
+                      class="px-2.5 py-1.5 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-1 transition-colors">
+                <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+                <span>Perbesar</span>
+              </button>
+            </div>
+          </div>
+          
+          ${this.clueActive ? `
+            <div class="hidden sm:block mt-1 p-2 bg-amber-50 border border-amber-300 text-amber-950 text-[11px] leading-snug max-w-lg shadow-md">
+              <b>Clue Bantuan:</b> ${curCase.clueText}
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
+      return;
+    }
+
+    // 2. JIKA NORMAL PANEL (DRAWER STANDAR DENGAN SHADOW HALUS & NO EMOJI)
     container.innerHTML = `
       <!-- FLOATING TRIGGER BUTTON (Pojok Kiri Bawah) -->
       <div class="fixed bottom-5 left-5 z-50">
         <button onclick="guidedTesting.togglePanel()" 
-                class="group bg-slate-900 hover:bg-emerald-600 text-white px-4 py-3 border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] hover:shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center gap-2.5">
+                class="group bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2.5 border border-slate-800 shadow-md flex items-center gap-2.5 transition-all">
           <div class="relative">
-            <i data-lucide="compass" class="w-5 h-5 text-emerald-400 group-hover:text-white"></i>
+            <i data-lucide="compass" class="w-5 h-5 text-emerald-400"></i>
             <span class="absolute -top-1 -right-1 w-2 h-2 bg-amber-400"></span>
           </div>
           <div class="text-left">
-            <span class="block font-black text-xs uppercase tracking-wider">Panduan Tes (${completedCount}/7)</span>
-            <span class="block text-[10px] text-slate-300 font-mono">${percent}% Selesai</span>
+            <span class="block font-bold text-xs uppercase tracking-wider">Panduan Tes (${completedStages}/7)</span>
+            <span class="block text-[10px] text-slate-300 font-mono">${completedCases}/13 Sub-Misi (${percent}%)</span>
           </div>
         </button>
 
-        <!-- COLLAPSIBLE MISSION DRAWER / CARD -->
-        <div id="guided-test-panel" class="${this.isOpen ? '' : 'hidden'} absolute bottom-16 left-0 w-[92vw] sm:w-[420px] max-h-[80vh] h-[600px] bg-white border-2 border-slate-900 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] flex flex-col z-50">
+        <!-- MISSION DRAWER CARD -->
+        <div id="guided-test-panel" class="${this.isOpen ? '' : 'hidden'} absolute bottom-14 left-0 w-[92vw] sm:w-[440px] max-h-[82vh] h-[620px] bg-white border border-slate-300 shadow-xl flex flex-col z-50">
           
           <!-- Header -->
-          <div class="bg-slate-900 text-white p-4 border-b-2 border-slate-900 flex items-center justify-between shrink-0">
+          <div class="bg-slate-900 text-white p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
             <div>
               <div class="flex items-center gap-2">
-                <span class="px-1.5 py-0.5 bg-emerald-400 text-slate-900 font-black text-[9px] uppercase">Duolingo Mode</span>
-                <span class="text-xs font-bold text-slate-200">Usability Testing</span>
+                <span class="px-1.5 py-0.5 bg-emerald-500 text-slate-900 font-bold text-[9px] uppercase tracking-wide">Mode Terstruktur</span>
+                <span class="text-xs text-slate-300">Usability Testing</span>
               </div>
               <h3 class="font-extrabold text-sm mt-0.5">7 Tahap Pengujian Sistem</h3>
             </div>
@@ -411,56 +688,56 @@ class GuidedTestingManager {
             </button>
           </div>
 
-          <!-- Progress Bar & Quick Controls -->
-          <div class="bg-slate-100 p-3 border-b-2 border-slate-900 shrink-0">
+          <!-- Progress Bar & Controls -->
+          <div class="bg-slate-50 p-3 border-b border-slate-200 shrink-0">
             <div class="flex justify-between items-center text-xs font-bold mb-1.5">
               <span class="text-slate-800">Progres Keseluruhan:</span>
-              <span class="font-mono text-emerald-700 font-black">${completedCount} dari 7 Selesai (${percent}%)</span>
+              <span class="font-mono text-emerald-700 font-bold">${completedStages}/7 Tahap (${percent}%)</span>
             </div>
-            <div class="w-full bg-slate-300 h-2.5 border border-slate-900 flex p-0.5">
+            <div class="w-full bg-slate-200 h-2 border border-slate-300 flex">
               <div class="bg-emerald-600 h-full transition-all duration-300" style="width: ${percent}%;"></div>
             </div>
             
             <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-200 text-[11px]">
-              <button onclick="guidedTesting.resetCurrentStage()" class="text-slate-600 hover:text-slate-900 font-bold flex items-center gap-1">
+              <button onclick="guidedTesting.resetCurrentStage()" class="text-slate-600 hover:text-slate-900 font-semibold flex items-center gap-1">
                 <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Ulangi Tahap Ini
               </button>
-              <button onclick="guidedTesting.confirmResetAll()" class="text-red-600 hover:text-red-700 font-bold flex items-center gap-1">
+              <button onclick="guidedTesting.confirmResetAll()" class="text-red-600 hover:text-red-700 font-semibold flex items-center gap-1">
                 <i data-lucide="trash-2" class="w-3 h-3"></i> Reset Progres
               </button>
             </div>
           </div>
 
-          <!-- Stages List (Scrollable Area) -->
-          <div class="flex-grow overflow-y-auto p-4 space-y-3.5 bg-slate-50 text-xs">
-            ${completedCount === 7 ? `
-              <!-- CELEBRATORY COMPLETION CARD -->
-              <div class="p-4 bg-emerald-100 border-2 border-emerald-700 text-emerald-950 text-center space-y-3 shadow-[3px_3px_0px_0px_rgba(4,120,87,1)]">
-                <div class="w-12 h-12 bg-emerald-600 text-white flex items-center justify-center mx-auto border-2 border-slate-900">
-                  <i data-lucide="award" class="w-6 h-6"></i>
+          <!-- Stages List (Scrollable) -->
+          <div class="flex-grow overflow-y-auto p-3.5 space-y-3 bg-slate-50 text-xs">
+            ${completedStages === 7 ? `
+              <!-- COMPLETION SUMMARY CARD -->
+              <div class="p-4 bg-emerald-50 border border-emerald-500 text-emerald-950 text-center space-y-2.5 shadow-sm">
+                <div class="w-10 h-10 bg-emerald-600 text-white flex items-center justify-center mx-auto">
+                  <i data-lucide="award" class="w-5 h-5"></i>
                 </div>
-                <h4 class="font-black text-sm">Selamat! Seluruh Misi Selesai</h4>
+                <h4 class="font-bold text-sm">Seluruh Misi Berhasil Diselesaikan</h4>
                 <p class="text-xs text-emerald-900 leading-relaxed">
-                  Terima kasih banyak telah mencoba seluruh 7 tahap alur prototipe. Masukan dan penilaian Anda sangat berharga bagi pengembangan sistem ini.
+                  Terima kasih banyak telah mencoba seluruh tahap alur prototipe. Masukan dan penilaian Anda sangat berharga bagi riset sistem ini.
                 </p>
                 <button onclick="guidedTesting.showEvaluationModal()" 
-                        class="w-full py-2.5 bg-slate-900 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center gap-2">
-                  <i data-lucide="edit-3" class="w-4 h-4 text-emerald-400"></i>
-                  <span>Isi Form Evaluasi Tester</span>
+                        class="w-full py-2 bg-slate-900 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2">
+                  <i data-lucide="edit-3" class="w-3.5 h-3.5 text-emerald-400"></i>
+                  <span>Buka Form Evaluasi Akhir</span>
                 </button>
               </div>
             ` : ''}
 
-            ${STAGES_CONFIG.map(s => this.renderStageItem(s)).join('')}
+            ${STAGES_CONFIG.map((s, idx) => this.renderStageItem(s, idx)).join('')}
           </div>
 
-          <!-- Bottom Footer Action -->
-          <div class="p-3 bg-white border-t-2 border-slate-900 shrink-0 flex items-center justify-between text-xs">
-            <button onclick="guidedTesting.showIntroModal()" class="text-slate-600 hover:text-blue-600 font-bold flex items-center gap-1">
+          <!-- Footer Action -->
+          <div class="p-3 bg-white border-t border-slate-200 shrink-0 flex items-center justify-between text-xs">
+            <button onclick="guidedTesting.showIntroModal()" class="text-slate-600 hover:text-blue-600 font-semibold flex items-center gap-1">
               <i data-lucide="help-circle" class="w-3.5 h-3.5"></i> Info Study Case
             </button>
             <button onclick="guidedTesting.showEvaluationModal()" 
-                    class="px-3 py-1.5 ${completedCount === 7 ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-800'} font-bold border border-slate-900 flex items-center gap-1">
+                    class="px-3 py-1.5 ${completedStages === 7 ? 'bg-emerald-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'} font-bold border border-slate-300 flex items-center gap-1">
               <i data-lucide="clipboard-check" class="w-3.5 h-3.5"></i> Form Evaluasi
             </button>
           </div>
@@ -474,25 +751,23 @@ class GuidedTestingManager {
     }
   }
 
-  renderStageItem(stageConf) {
-    const sNum = stageConf.stage;
-    const stageState = this.progress.stages[sNum] || { completed: false, cases: {} };
-    const isCompleted = stageState.completed;
-    const isCurrent = this.progress.currentStage === sNum;
-    const isLocked = !isCompleted && !isCurrent && sNum > this.progress.currentStage;
+  renderStageItem(stageConf, sIdx) {
+    const isCurrent = this.progress.currentStageIndex === sIdx;
+    const isPast = sIdx < this.progress.currentStageIndex || (sIdx === 6 && this.progress.isFinished);
+    const isFuture = sIdx > this.progress.currentStageIndex;
 
-    if (isCompleted) {
-      // Completed Stage (Green Header, Collapsible or compact)
+    // 1. PAST STAGE (COMPLETED)
+    if (isPast) {
       return `
-        <div class="border-2 border-slate-900 bg-white shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
-          <div class="p-3 bg-emerald-50 border-b border-emerald-200 flex items-center justify-between">
+        <div class="border border-emerald-300 bg-white shadow-sm">
+          <div class="p-3 bg-emerald-50 flex items-center justify-between">
             <div class="flex items-center gap-2">
               <div class="w-6 h-6 bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
                 <i data-lucide="check" class="w-3.5 h-3.5"></i>
               </div>
               <div>
-                <span class="font-extrabold text-xs text-slate-900">${stageConf.title}</span>
-                <span class="block text-[10px] text-emerald-800 font-semibold font-mono">Tahap Selesai (100%)</span>
+                <span class="font-bold text-xs text-slate-900">${stageConf.title}</span>
+                <span class="block text-[10px] text-emerald-800 font-mono">Tahap Selesai</span>
               </div>
             </div>
             <span class="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-200 text-emerald-900">Lulus</span>
@@ -501,49 +776,127 @@ class GuidedTestingManager {
       `;
     }
 
-    if (isCurrent) {
-      // Active Current Stage (Highlight, Open with step-by-step checklist)
+    // 2. CURRENT STAGE (ACTIVE)
+    if (isCurrent && !this.progress.isFinished) {
       return `
-        <div class="border-2 border-slate-900 bg-white shadow-[4px_4px_0px_0px_rgba(15,23,42,1)]">
+        <div class="border-2 border-slate-900 bg-white shadow-md">
           
-          <!-- Active Stage Header -->
-          <div class="p-3.5 bg-slate-900 text-white flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-              <div class="w-7 h-7 bg-amber-400 text-slate-900 flex items-center justify-center font-bold text-xs border border-slate-900">
-                <i data-lucide="${stageConf.icon}" class="w-4 h-4"></i>
+          <!-- Stage Header -->
+          <div class="p-3 bg-slate-900 text-white flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 bg-amber-400 text-slate-900 flex items-center justify-center font-bold text-xs">
+                <i data-lucide="${stageConf.icon}" class="w-3.5 h-3.5"></i>
               </div>
               <div>
-                <span class="font-extrabold text-xs block text-white">${stageConf.title}</span>
-                <span class="text-[10px] text-amber-300 font-mono">Sedang Berlangsung</span>
+                <span class="font-bold text-xs block text-white">${stageConf.title}</span>
+                <span class="text-[10px] text-amber-300 font-mono">Tahap Aktif</span>
               </div>
             </div>
-            <span class="px-2 py-0.5 bg-amber-400 text-slate-900 font-black text-[9px] uppercase">Tahap Aktif</span>
+            <span class="px-1.5 py-0.5 bg-amber-400 text-slate-900 font-bold text-[9px] uppercase">Berlangsung</span>
           </div>
 
-          <div class="p-3.5 space-y-3">
+          <div class="p-3 space-y-3">
             <p class="text-xs text-slate-600 leading-relaxed">${stageConf.description}</p>
             
-            <!-- Sub-missions (Cases) Checklist -->
+            <!-- Sub-cases List -->
             <div class="space-y-2">
-              ${stageConf.cases.map(c => {
-                const isCaseDone = stageState.cases[c.id] === true;
+              ${stageConf.cases.map((c, cIdx) => {
+                const isCaseCompleted = this.progress.completedCases && this.progress.completedCases[c.id];
+                const isCaseActive = cIdx === this.progress.currentSubCaseIndex && !isCaseCompleted;
+                const isCaseLocked = cIdx > this.progress.currentSubCaseIndex && !isCaseCompleted;
+
+                // Sub-case Selesai
+                if (isCaseCompleted) {
+                  const review = (this.progress.stepReviews || []).find(r => r.caseId === c.id);
+                  return `
+                    <div class="p-2.5 border border-emerald-400 bg-emerald-50 flex items-start gap-2.5">
+                      <div class="w-5 h-5 shrink-0 mt-0.5 flex items-center justify-center bg-emerald-600 text-white font-bold text-xs">
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                      </div>
+                      <div class="flex-grow">
+                        <div class="flex items-center justify-between">
+                          <span class="font-bold text-xs text-emerald-950">${c.title}</span>
+                          <span class="text-[9px] font-bold text-emerald-700 bg-emerald-200 px-1 py-0.2">Selesai</span>
+                        </div>
+                        <p class="text-[11px] text-emerald-800 mt-0.5">${c.instruction}</p>
+                        ${review ? `
+                          <div class="mt-1.5 text-[10px] font-medium text-emerald-900 bg-white p-1.5 border border-emerald-200">
+                            <b>Respon Tester:</b> "${review.experience}" ${review.note ? `• ${review.note}` : ''}
+                          </div>
+                        ` : ''}
+                      </div>
+                    </div>
+                  `;
+                }
+
+                // Sub-case Sedang Aktif
+                if (isCaseActive) {
+                  return `
+                    <div class="p-3 border-2 border-slate-900 bg-white shadow-sm space-y-2.5">
+                      <div class="flex items-center justify-between">
+                        <span class="font-extrabold text-xs text-slate-900">${c.title}</span>
+                        ${this.progress.isSubCaseRunning ? `
+                          <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-400 px-1.5 py-0.5 flex items-center gap-1 font-mono">
+                            <span class="w-1.5 h-1.5 bg-emerald-600 rounded-full animate-ping"></span> Berjalan
+                          </span>
+                        ` : `
+                          <span class="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.5">
+                            Siap Dimulai
+                          </span>
+                        `}
+                      </div>
+
+                      <p class="text-xs text-slate-700 leading-snug font-medium">${c.instruction}</p>
+
+                      <!-- Tombol Aksi Sub-case -->
+                      ${!this.progress.isSubCaseRunning ? `
+                        <button onclick="guidedTesting.startActiveSubCase()" 
+                                class="w-full py-2 bg-slate-900 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors shadow-sm">
+                          <i data-lucide="play" class="w-3.5 h-3.5 text-emerald-400"></i>
+                          <span>Mulai Sub-Tes Ini</span>
+                        </button>
+                      ` : `
+                        <div class="space-y-1.5 pt-1">
+                          <div class="flex items-center gap-2">
+                            <button onclick="guidedTesting.minimizePanel()" 
+                                    class="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-1 transition-colors">
+                              <i data-lucide="minimize-2" class="w-3 h-3"></i>
+                              <span>Perkecil & Cari</span>
+                            </button>
+                            <button onclick="guidedTesting.toggleClueSpotlight()" 
+                                    class="flex-1 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-400 font-bold text-[11px] flex items-center justify-center gap-1 transition-colors">
+                              <i data-lucide="help-circle" class="w-3 h-3 text-amber-600"></i>
+                              <span>${this.clueActive ? 'Tutup Clue' : 'Lihat Clue'}</span>
+                            </button>
+                            <button onclick="guidedTesting.pauseActiveSubCase()" 
+                                    class="py-1.5 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-[11px]">
+                              Jeda
+                            </button>
+                          </div>
+
+                          ${this.clueActive ? `
+                            <div class="p-2 bg-amber-50 border border-amber-300 text-amber-950 text-[11px] leading-snug">
+                              <b>Clue:</b> ${c.clueText}
+                            </div>
+                          ` : ''}
+                        </div>
+                      `}
+                    </div>
+                  `;
+                }
+
+                // Sub-case Terkunci (Menunggu giliran)
                 return `
-                  <div class="p-2.5 border-2 ${isCaseDone ? 'border-emerald-600 bg-emerald-50' : 'border-slate-300 bg-slate-50'} flex items-start gap-2.5 transition-all">
-                    <div class="w-5 h-5 shrink-0 mt-0.5 flex items-center justify-center font-bold text-xs ${
-                      isCaseDone ? 'bg-emerald-600 text-white' : 'border-2 border-slate-400 bg-white text-transparent'
-                    }">
-                      <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                  <div class="p-2.5 border border-slate-200 bg-slate-100 opacity-60 flex items-start gap-2.5">
+                    <div class="w-5 h-5 shrink-0 mt-0.5 flex items-center justify-center bg-slate-200 text-slate-500 font-bold text-xs">
+                      <i data-lucide="lock" class="w-3.5 h-3.5"></i>
                     </div>
                     <div class="flex-grow">
                       <div class="flex items-center justify-between">
-                        <span class="font-extrabold text-xs ${isCaseDone ? 'text-emerald-950 line-through' : 'text-slate-900'}">${c.title}</span>
-                        ${isCaseDone ? `
-                          <span class="text-[9px] font-bold text-emerald-700 bg-emerald-200 px-1 py-0.2">Selesai</span>
-                        ` : `
-                          <span class="text-[9px] font-bold text-slate-500 font-mono">Belum</span>
-                        `}
+                        <span class="font-semibold text-xs text-slate-600">${c.title}</span>
+                        <span class="text-[9px] font-mono text-slate-400">Terkunci</span>
                       </div>
-                      <p class="text-[11px] ${isCaseDone ? 'text-emerald-800' : 'text-slate-600'} mt-0.5 leading-snug">${c.instruction}</p>
+                      <p class="text-[11px] text-slate-500 mt-0.5 line-clamp-1">${c.instruction}</p>
                     </div>
                   </div>
                 `;
@@ -556,36 +909,21 @@ class GuidedTestingManager {
       `;
     }
 
-    // Locked Stage (Padlock)
+    // 3. FUTURE STAGE (LOCKED)
     return `
-      <div class="border-2 border-slate-300 bg-slate-100 p-3 opacity-60 flex items-center justify-between">
-        <div class="flex items-center gap-2.5">
-          <div class="w-6 h-6 bg-slate-300 text-slate-600 flex items-center justify-center font-bold text-xs">
+      <div class="border border-slate-200 bg-slate-100 p-3 opacity-60 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-xs">
             <i data-lucide="lock" class="w-3.5 h-3.5"></i>
           </div>
           <div>
-            <span class="font-bold text-xs text-slate-700">${stageConf.title}</span>
-            <span class="block text-[10px] text-slate-500 font-mono">${stageConf.subtitle}</span>
+            <span class="font-bold text-xs text-slate-600">${stageConf.title}</span>
+            <span class="block text-[10px] text-slate-400 font-mono">${stageConf.subtitle}</span>
           </div>
         </div>
         <span class="text-[10px] text-slate-400 font-mono">Terkunci</span>
       </div>
     `;
-  }
-
-  togglePanel() {
-    this.isOpen = !this.isOpen;
-    this.renderWidget();
-  }
-
-  updateWidgetUI() {
-    this.renderWidget();
-  }
-
-  confirmResetAll() {
-    if (confirm('Apakah Anda yakin ingin mereset seluruh progres panduan tes? Semua centang tahap akan dikembalikan ke Tahap 1.')) {
-      this.resetProgress();
-    }
   }
 
   // --- MODAL INTRO STUDY CASE ---
@@ -599,15 +937,15 @@ class GuidedTestingManager {
     }
 
     modal.innerHTML = `
-      <div class="bg-white border-2 border-slate-900 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div class="bg-slate-900 text-white p-5 border-b-2 border-slate-900 flex items-center justify-between">
+      <div class="bg-white border border-slate-800 shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div class="bg-slate-900 text-white p-4 border-b border-slate-800 flex items-center justify-between">
           <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 bg-emerald-500 text-slate-900 flex items-center justify-center font-black">
-              <i data-lucide="compass" class="w-5 h-5"></i>
+            <div class="w-8 h-8 bg-emerald-500 text-slate-900 flex items-center justify-center font-bold">
+              <i data-lucide="compass" class="w-4 h-4"></i>
             </div>
             <div>
-              <span class="px-2 py-0.5 bg-amber-400 text-slate-900 font-black text-[9px] uppercase tracking-wider">Usability Testing</span>
-              <h3 class="font-extrabold text-base leading-tight">Panduan Uji Coba Patungan Akun</h3>
+              <span class="px-1.5 py-0.5 bg-amber-400 text-slate-900 font-bold text-[9px] uppercase tracking-wider">Usability Testing</span>
+              <h3 class="font-extrabold text-sm leading-tight">Panduan Uji Coba Patungan Akun</h3>
             </div>
           </div>
           <button onclick="guidedTesting.closeIntroModal()" class="text-slate-400 hover:text-white">
@@ -615,32 +953,24 @@ class GuidedTestingManager {
           </button>
         </div>
 
-        <div class="p-6 space-y-4 text-xs leading-relaxed text-slate-700">
-          <div class="p-3 bg-blue-50 border border-blue-300 text-blue-950 font-medium">
-            Selamat datang! Prototipe ini dirancang untuk mensimulasikan sistem informasi patungan akun premium secara menyeluruh. Anda diundang untuk mencoba <b>7 Tahap Alur Pengujian</b> (bergaya interaktif ala Duolingo).
+        <div class="p-5 space-y-3.5 text-xs leading-relaxed text-slate-700">
+          <div class="p-3 bg-blue-50 border border-blue-200 text-blue-950 font-medium">
+            Selamat datang! Prototipe ini dirancang untuk menguji kemudahan sistem informasi patungan akun premium. Anda diajak menyelesaikan <b>7 Tahap Pengujian Ketat</b> secara berurutan.
           </div>
 
-          <h4 class="font-black uppercase tracking-wider text-slate-900 text-xs">Alur Pengujian yang Akan Anda Jalani:</h4>
-          <ol class="space-y-2 list-decimal list-inside text-slate-800">
-            <li><b>Eksplorasi & Pencarian:</b> Cari mandiri di katalog dan tanya Asisten AI.</li>
-            <li><b>Cek Ketersediaan Grup:</b> Lihat grup OPEN, durasi paket, dan kondisi produk tanpa grup / expired.</li>
-            <li><b>Pengecekan Status Login:</b> Uji pencegatan otomatis saat belum login (*Guest Mode*).</li>
-            <li><b>Checkout Pembayaran:</b> Bayar via saldo, transfer manual, dan uji error race condition.</li>
-            <li><b>Verifikasi Admin:</b> Uji persetujuan (Approve) dan penolakan (Reject + Upload Ulang).</li>
-            <li><b>Masa Tunggu & Garansi Refund:</b> Uji grup kuota penuh vs simulasi refund waktu habis.</li>
-            <li><b>Akses Kredensial Akun:</b> Ambil email, password, dan PIN akun yang telah aktif.</li>
-          </ol>
-
-          <p class="text-[11px] text-slate-500">
-            Setiap aksi yang Anda lakukan akan <b>otomatis terdeteksi</b> oleh sistem panduan di pojok kiri bawah. Di akhir pengujian, mohon luangkan 1 menit untuk mengisi form evaluasi singkat.
-          </p>
+          <h4 class="font-bold uppercase tracking-wider text-slate-900 text-xs">Aturan Pengujian:</h4>
+          <ul class="space-y-1.5 list-disc list-inside text-slate-800">
+            <li><b>Kunci Sub-Tahap:</b> Klik tombol <b>"Mulai Sub-Tes Ini"</b> pada panduan sebelum melakukan aksi.</li>
+            <li><b>Auto-Minimize & Clue:</b> Saat misi dimulai, panel otomatis mengecil. Jika diam 5 detik, elemen target akan berkedip kuning.</li>
+            <li><b>Ulasan Cepat:</b> Di setiap selesai 1 sub-misi, berikan evaluasi cepat (Aman, Bingung, atau Bug).</li>
+          </ul>
         </div>
 
-        <div class="p-4 bg-slate-100 border-t-2 border-slate-900 flex flex-col sm:flex-row justify-end gap-2">
-          <button onclick="guidedTesting.closeIntroModal()" class="px-4 py-2 border border-slate-900 bg-white font-bold text-xs hover:bg-slate-50">
+        <div class="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-end gap-2">
+          <button onclick="guidedTesting.closeIntroModal()" class="px-4 py-2 border border-slate-300 bg-white font-bold text-xs hover:bg-slate-100">
             Jelajah Bebas
           </button>
-          <button onclick="guidedTesting.startStage1()" class="px-5 py-2.5 bg-slate-900 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-wider border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center gap-1.5">
+          <button onclick="guidedTesting.startStage1()" class="px-4 py-2 bg-slate-900 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors">
             <span>Mulai Misi Tahap 1</span>
             <i data-lucide="arrow-right" class="w-4 h-4"></i>
           </button>
@@ -663,8 +993,11 @@ class GuidedTestingManager {
 
   startStage1() {
     this.closeIntroModal();
+    this.progress.currentStageIndex = 0;
+    this.progress.currentSubCaseIndex = 0;
+    this.progress.isSubCaseRunning = false;
+    this.isMinimized = false;
     this.isOpen = true;
-    this.progress.currentStage = 1;
     this.saveProgress();
     this.renderWidget();
     if (window.app && typeof window.app.navigate === 'function') {
@@ -672,7 +1005,180 @@ class GuidedTestingManager {
     }
   }
 
-  // --- FORM EVALUASI TESTER (MODAL) ---
+  // --- MODAL MINI-EVALUASI SUB-TAHAP (STEP MICRO-REVIEW) ---
+  showStepMicroReviewModal(stage, subCase) {
+    let modal = document.getElementById('modal-step-micro-review');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'modal-step-micro-review';
+      modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm';
+      document.body.appendChild(modal);
+    }
+
+    this.selectedStepExperience = '';
+    const isLastOverall = this.progress.currentStageIndex === 6 && this.progress.currentSubCaseIndex === stage.cases.length - 1;
+
+    modal.innerHTML = `
+      <div class="bg-white border border-slate-800 shadow-xl max-w-md w-full p-0">
+        
+        <!-- Header -->
+        <div class="bg-slate-900 text-white p-4 border-b border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 bg-emerald-500 text-slate-900 flex items-center justify-center font-bold">
+              <i data-lucide="check" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">Sub-Tes Berhasil Diselesaikan</span>
+              <h3 class="font-extrabold text-sm leading-tight">${subCase.title}</h3>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form -->
+        <form onsubmit="guidedTesting.handleStepReviewSubmit(event)" class="p-5 space-y-4 text-xs">
+          <div>
+            <label class="block font-bold text-slate-900 mb-2">
+              Bagaimana pengalamanmu di langkah ini? <span class="text-red-500">*</span>
+            </label>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button type="button" onclick="guidedTesting.selectStepExperience('Aman & Jelas')"
+                      id="btn-exp-aman"
+                      class="p-2.5 border text-center transition-all flex flex-col items-center gap-1 border-slate-300 hover:border-slate-800 bg-white text-slate-800">
+                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i>
+                <span class="font-bold text-xs">Aman & Jelas</span>
+              </button>
+
+              <button type="button" onclick="guidedTesting.selectStepExperience('Agak Bingung')"
+                      id="btn-exp-bingung"
+                      class="p-2.5 border text-center transition-all flex flex-col items-center gap-1 border-slate-300 hover:border-slate-800 bg-white text-slate-800">
+                <i data-lucide="help-circle" class="w-4 h-4 text-amber-600"></i>
+                <span class="font-bold text-xs">Agak Bingung</span>
+              </button>
+
+              <button type="button" onclick="guidedTesting.selectStepExperience('Terasa Aneh / Ada Bug')"
+                      id="btn-exp-bug"
+                      class="p-2.5 border text-center transition-all flex flex-col items-center gap-1 border-slate-300 hover:border-slate-800 bg-white text-slate-800">
+                <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600"></i>
+                <span class="font-bold text-xs">Aneh / Bug</span>
+              </button>
+            </div>
+            <input type="hidden" id="step-review-exp" value="" required />
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-900 mb-1" id="step-note-label">
+              Catatan singkat:
+            </label>
+            <textarea id="step-review-note" rows="2" 
+                      placeholder="Bagian mana yang terasa aneh atau tidak perlu? (Opsional jika Aman & Jelas)"
+                      class="w-full p-2.5 border border-slate-300 focus:border-slate-900 font-medium focus:outline-none"></textarea>
+          </div>
+
+          <div class="pt-2 flex justify-end">
+            <button type="submit" 
+                    class="w-full sm:w-auto px-5 py-2.5 bg-slate-900 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+              <span>${isLastOverall ? 'Simpan & Lanjut ke Form Evaluasi Akhir' : 'Simpan & Lanjut ke Sub-Tes Berikutnya'}</span>
+              <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </form>
+
+      </div>
+    `;
+
+    modal.classList.remove('hidden');
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+  }
+
+  selectStepExperience(val) {
+    this.selectedStepExperience = val;
+    const input = document.getElementById('step-review-exp');
+    if (input) input.value = val;
+
+    const btnAman = document.getElementById('btn-exp-aman');
+    const btnBingung = document.getElementById('btn-exp-bingung');
+    const btnBug = document.getElementById('btn-exp-bug');
+    const noteLabel = document.getElementById('step-note-label');
+    const noteTextarea = document.getElementById('step-review-note');
+
+    [btnAman, btnBingung, btnBug].forEach(b => {
+      if (b) b.className = 'p-2.5 border text-center transition-all flex flex-col items-center gap-1 border-slate-300 hover:border-slate-800 bg-white text-slate-800';
+    });
+
+    if (val === 'Aman & Jelas' && btnAman) {
+      btnAman.className = 'p-2.5 border-2 border-emerald-600 bg-emerald-50 text-emerald-950 font-bold text-center flex flex-col items-center gap-1';
+      if (noteLabel) noteLabel.innerHTML = 'Catatan singkat <span class="text-slate-400 font-normal">(opsional):</span>';
+      if (noteTextarea) noteTextarea.required = false;
+    } else if (val === 'Agak Bingung' && btnBingung) {
+      btnBingung.className = 'p-2.5 border-2 border-amber-500 bg-amber-50 text-amber-950 font-bold text-center flex flex-col items-center gap-1';
+      if (noteLabel) noteLabel.innerHTML = 'Catatan singkat kendala / kebingungan <span class="text-red-500">*</span>:';
+      if (noteTextarea) noteTextarea.required = true;
+    } else if (val === 'Terasa Aneh / Ada Bug' && btnBug) {
+      btnBug.className = 'p-2.5 border-2 border-rose-600 bg-rose-50 text-rose-950 font-bold text-center flex flex-col items-center gap-1';
+      if (noteLabel) noteLabel.innerHTML = 'Catatan singkat keanehan / bug yang dialami <span class="text-red-500">*</span>:';
+      if (noteTextarea) noteTextarea.required = true;
+    }
+  }
+
+  handleStepReviewSubmit(event) {
+    event.preventDefault();
+    const exp = this.selectedStepExperience;
+    const note = (document.getElementById('step-review-note').value || '').trim();
+
+    if (!exp) {
+      alert('Mohon pilih salah satu respon pengalaman (Aman & Jelas, Agak Bingung, atau Aneh/Bug).');
+      return;
+    }
+
+    if ((exp === 'Agak Bingung' || exp === 'Terasa Aneh / Ada Bug') && !note) {
+      alert('Mohon tuliskan catatan singkat mengenai kebingungan atau keanehan yang dialami.');
+      return;
+    }
+
+    const curStage = STAGES_CONFIG[this.progress.currentStageIndex];
+    const curCase = curStage.cases[this.progress.currentSubCaseIndex];
+
+    if (!this.progress.stepReviews) this.progress.stepReviews = [];
+    this.progress.stepReviews.push({
+      caseId: curCase.id,
+      stageNum: curStage.stage,
+      caseTitle: curCase.title,
+      experience: exp,
+      note: note,
+      timestamp: new Date().toISOString()
+    });
+
+    const modal = document.getElementById('modal-step-micro-review');
+    if (modal) modal.classList.add('hidden');
+
+    // Berpindah ke sub-kasus berikutnya atau tahap berikutnya
+    if (this.progress.currentSubCaseIndex + 1 < curStage.cases.length) {
+      this.progress.currentSubCaseIndex++;
+    } else if (this.progress.currentStageIndex + 1 < STAGES_CONFIG.length) {
+      this.progress.currentStageIndex++;
+      this.progress.currentSubCaseIndex = 0;
+    } else {
+      this.progress.isFinished = true;
+    }
+
+    // Setiap sub-kasus baru dimulai dalam status isSubCaseRunning = false
+    this.progress.isSubCaseRunning = false;
+    this.isMinimized = false;
+    this.isOpen = true;
+    this.saveProgress();
+    this.renderWidget();
+
+    if (this.progress.isFinished) {
+      setTimeout(() => {
+        this.showEvaluationModal();
+      }, 500);
+    }
+  }
+
+  // --- FORM EVALUASI TESTER AKHIR (MODAL) ---
   showEvaluationModal() {
     let modal = document.getElementById('modal-evaluation-form');
     if (!modal) {
@@ -687,17 +1193,17 @@ class GuidedTestingManager {
     const defaultName = (currentUser && !currentUser.isGuest) ? currentUser.name : '';
 
     modal.innerHTML = `
-      <div class="bg-white border-2 border-slate-900 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] max-w-xl w-full max-h-[92vh] overflow-y-auto">
+      <div class="bg-white border border-slate-800 shadow-xl max-w-xl w-full max-h-[92vh] overflow-y-auto">
         
         <!-- Header -->
-        <div class="bg-slate-900 text-white p-5 border-b-2 border-slate-900 flex items-center justify-between sticky top-0 z-10">
-          <div class="flex items-center gap-2.5">
+        <div class="bg-slate-900 text-white p-4 border-b border-slate-800 flex items-center justify-between sticky top-0 z-10">
+          <div class="flex items-center gap-2">
             <div class="w-8 h-8 bg-blue-600 text-white flex items-center justify-center font-bold">
               <i data-lucide="clipboard-check" class="w-4 h-4"></i>
             </div>
             <div>
-              <h3 class="font-black text-sm uppercase tracking-wide">Form Evaluasi Pengujian Tester</h3>
-              <span class="text-[10px] text-slate-300 font-mono">Progres Misi Anda: ${completedCount}/7 Tahap Selesai</span>
+              <h3 class="font-bold text-sm uppercase tracking-wide">Form Evaluasi Pengujian Tester</h3>
+              <span class="text-[10px] text-slate-300 font-mono">Progres: ${completedCount}/7 Tahap Selesai</span>
             </div>
           </div>
           <button onclick="guidedTesting.closeEvaluationModal()" class="text-slate-400 hover:text-white">
@@ -705,11 +1211,11 @@ class GuidedTestingManager {
           </button>
         </div>
 
-        <div id="evaluation-form-container" class="p-6">
+        <div id="evaluation-form-container" class="p-5">
           <form onsubmit="guidedTesting.handleEvaluationSubmit(event)" class="space-y-4 text-xs">
             
             <p class="text-slate-600 leading-relaxed">
-              Seluruh masukan Anda disimpan secara terstruktur (JSON) untuk keperluan riset antarmuka dan pengembangan sistem informasi. Semua pertanyaan di bawah ini <b>wajib diisi</b>.
+              Seluruh masukan Anda disimpan secara terstruktur untuk keperluan riset antarmuka dan pengembangan sistem informasi. Semua pertanyaan di bawah ini <b>wajib diisi</b>.
             </p>
 
             <!-- 1. Nama Tester -->
@@ -718,7 +1224,7 @@ class GuidedTestingManager {
                 1. Nama Lengkap / Panggilan Tester <span class="text-red-500">*</span>
               </label>
               <input type="text" id="eval-name" required value="${defaultName}" placeholder="cth: Budi Santoso / Rian" 
-                     class="w-full px-3 py-2 border-2 border-slate-900 font-medium focus:outline-none focus:bg-blue-50" />
+                     class="w-full px-3 py-2 border border-slate-400 font-medium focus:outline-none focus:border-slate-900" />
             </div>
 
             <!-- 2. Rating Workflow -->
@@ -730,8 +1236,8 @@ class GuidedTestingManager {
                 ${[1, 2, 3, 4, 5].map(val => `
                   <button type="button" onclick="guidedTesting.setWorkflowRating(${val})" 
                           id="btn-wf-${val}"
-                          class="py-2 border-2 border-slate-300 hover:border-slate-900 font-black text-xs transition-all">
-                    ★ ${val}
+                          class="py-2 border border-slate-300 hover:border-slate-800 font-bold text-xs transition-all flex flex-col items-center justify-center">
+                    <span class="flex items-center gap-1 font-bold"><i data-lucide="star" class="w-3.5 h-3.5 text-amber-500"></i> ${val}</span>
                     <span class="block text-[9px] font-normal text-slate-500">${val === 1 ? 'Sulit' : val === 5 ? 'Sangat Mudah' : ''}</span>
                   </button>
                 `).join('')}
@@ -748,8 +1254,8 @@ class GuidedTestingManager {
                 ${[1, 2, 3, 4, 5].map(val => `
                   <button type="button" onclick="guidedTesting.setUiuxRating(${val})" 
                           id="btn-ui-${val}"
-                          class="py-2 border-2 border-slate-300 hover:border-slate-900 font-black text-xs transition-all">
-                    ★ ${val}
+                          class="py-2 border border-slate-300 hover:border-slate-800 font-bold text-xs transition-all flex flex-col items-center justify-center">
+                    <span class="flex items-center gap-1 font-bold"><i data-lucide="star" class="w-3.5 h-3.5 text-amber-500"></i> ${val}</span>
                     <span class="block text-[9px] font-normal text-slate-500">${val === 1 ? 'Kaku' : val === 5 ? 'Sangat Nyaman' : ''}</span>
                   </button>
                 `).join('')}
@@ -763,7 +1269,7 @@ class GuidedTestingManager {
                 4. Apa yang kurang atau membingungkan dari alur (workflow) user? <span class="text-red-500">*</span>
               </label>
               <textarea id="eval-workflow-critique" required rows="2" placeholder="cth: Alur verifikasi transfer manual butuh konfirmasi WhatsApp, dll..." 
-                        class="w-full px-3 py-2 border-2 border-slate-900 font-medium focus:outline-none focus:bg-blue-50"></textarea>
+                        class="w-full px-3 py-2 border border-slate-400 font-medium focus:outline-none focus:border-slate-900"></textarea>
             </div>
 
             <!-- 5. Kekurangan UI/UX -->
@@ -772,7 +1278,7 @@ class GuidedTestingManager {
                 5. Apa yang kurang dari segi tampilan UI/UX atau kenyamanan visual? <span class="text-red-500">*</span>
               </label>
               <textarea id="eval-uiux-critique" required rows="2" placeholder="cth: Kontras warna di badge status kurang mencolok, tombol salin perlu ikon feedback, dll..." 
-                        class="w-full px-3 py-2 border-2 border-slate-900 font-medium focus:outline-none focus:bg-blue-50"></textarea>
+                        class="w-full px-3 py-2 border border-slate-400 font-medium focus:outline-none focus:border-slate-900"></textarea>
             </div>
 
             <!-- 6. Saran Pengembangan -->
@@ -781,16 +1287,16 @@ class GuidedTestingManager {
                 6. Saran pengembangan atau ide fitur tambahan? <span class="text-red-500">*</span>
               </label>
               <textarea id="eval-suggestions" required rows="2" placeholder="cth: Tambahkan fitur pengingat perpanjangan masa aktif via SMS/Email..." 
-                        class="w-full px-3 py-2 border-2 border-slate-900 font-medium focus:outline-none focus:bg-blue-50"></textarea>
+                        class="w-full px-3 py-2 border border-slate-400 font-medium focus:outline-none focus:border-slate-900"></textarea>
             </div>
 
             <!-- Submit Button -->
-            <div class="pt-3 border-t-2 border-slate-900 flex justify-end gap-2">
-              <button type="button" onclick="guidedTesting.closeEvaluationModal()" class="px-4 py-2 border border-slate-900 bg-white font-bold text-xs">
+            <div class="pt-3 border-t border-slate-200 flex justify-end gap-2">
+              <button type="button" onclick="guidedTesting.closeEvaluationModal()" class="px-4 py-2 border border-slate-300 bg-white font-bold text-xs">
                 Batal
               </button>
               <button type="submit" id="eval-submit-btn" 
-                      class="px-6 py-2.5 bg-slate-900 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-wider border-2 border-slate-900 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] flex items-center gap-1.5 transition-all">
+                      class="px-5 py-2.5 bg-slate-900 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-sm">
                 <i data-lucide="send" class="w-4 h-4"></i>
                 <span>Simpan & Kirim Evaluasi</span>
               </button>
@@ -817,9 +1323,9 @@ class GuidedTestingManager {
       const btn = document.getElementById(`btn-wf-${i}`);
       if (btn) {
         if (i === val) {
-          btn.className = 'py-2 border-2 border-slate-900 bg-slate-900 text-white font-black text-xs shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]';
+          btn.className = 'py-2 border-2 border-slate-900 bg-slate-900 text-white font-bold text-xs';
         } else {
-          btn.className = 'py-2 border-2 border-slate-300 hover:border-slate-800 text-slate-800 font-bold text-xs';
+          btn.className = 'py-2 border border-slate-300 hover:border-slate-800 text-slate-800 font-bold text-xs';
         }
       }
     }
@@ -834,9 +1340,9 @@ class GuidedTestingManager {
       const btn = document.getElementById(`btn-ui-${i}`);
       if (btn) {
         if (i === val) {
-          btn.className = 'py-2 border-2 border-slate-900 bg-slate-900 text-white font-black text-xs shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]';
+          btn.className = 'py-2 border-2 border-slate-900 bg-slate-900 text-white font-bold text-xs';
         } else {
-          btn.className = 'py-2 border-2 border-slate-300 hover:border-slate-800 text-slate-800 font-bold text-xs';
+          btn.className = 'py-2 border border-slate-300 hover:border-slate-800 text-slate-800 font-bold text-xs';
         }
       }
     }
@@ -871,7 +1377,15 @@ class GuidedTestingManager {
     const completedStages = this.getCompletedStagesCount();
     const now = new Date();
 
-    // Payload dengan field key spesifik untuk Google Apps Script (Google Sheets)
+    // 2. Gabungkan ringkasan ulasan per sub-tahap ke workflowFeedback
+    let stepReviewsSummary = '';
+    if (this.progress.stepReviews && this.progress.stepReviews.length > 0) {
+      stepReviewsSummary = '\n\n[Rekap Ulasan per Sub-Tahap]:\n' +
+        this.progress.stepReviews.map(r => 
+          `• ${r.caseId} (${r.experience}): ${r.note ? r.note : '-'}`
+        ).join('\n');
+    }
+
     const payload = {
       timestamp: now.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }),
       isoTimestamp: now.toISOString(),
@@ -880,12 +1394,13 @@ class GuidedTestingManager {
       testerName: name, // alias
       workflowRating: Number(wfRating),
       uiuxRating: Number(uiRating),
-      workflowFeedback: wfCritique,
+      workflowFeedback: wfCritique + stepReviewsSummary,
       uiuxFeedback: uiCritique,
       suggestions: suggestions,
       futureSuggestions: suggestions, // alias
       completedStages: `${completedStages}/7`,
       stagesCompleted: `${completedStages}/7`, // alias
+      stepReviews: this.progress.stepReviews || [],
       environment: {
         userAgent: navigator.userAgent,
         screenWidth: window.innerWidth,
@@ -893,7 +1408,7 @@ class GuidedTestingManager {
       }
     };
 
-    // 2. Simpan cadangan ke localStorage (array feedback)
+    // 3. Simpan cadangan ke localStorage
     let storedList = [];
     try {
       const raw = localStorage.getItem(FEEDBACK_STORAGE_KEY);
@@ -904,7 +1419,7 @@ class GuidedTestingManager {
     storedList.unshift(payload);
     localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify(storedList));
 
-    // 3. Kirim data ke Google Apps Script (Anti-CORS preflight: text/plain)
+    // 4. Kirim data ke Google Apps Script (Anti-CORS preflight: text/plain)
     let sendSuccess = false;
     let sendError = null;
 
@@ -916,7 +1431,6 @@ class GuidedTestingManager {
           body: JSON.stringify(payload)
         });
 
-        // Google Apps Script redirect or 200 OK
         if (response.ok || response.status < 400 || response.type === 'opaque') {
           sendSuccess = true;
         } else {
@@ -928,16 +1442,16 @@ class GuidedTestingManager {
       }
     }
 
-    // 4. Notifikasi Toast
+    // 5. Notifikasi Toast
     if (window.app && typeof window.app.showToast === 'function') {
       if (sendSuccess) {
-        window.app.showToast('✅ Evaluasi berhasil terkirim ke database Google Sheets!', 'success');
+        window.app.showToast('Evaluasi berhasil terkirim ke database Google Sheets.', 'success');
       } else {
         window.app.showToast('Evaluasi tersimpan lokal. Silakan gunakan opsi WhatsApp atau unduh JSON jika perlu.', 'info');
       }
     }
 
-    // 5. Tampilkan layar sukses & export actions
+    // 6. Tampilkan layar sukses & export actions
     this.renderEvaluationSuccess(payload, sendSuccess, sendError);
   }
 
@@ -953,11 +1467,11 @@ class GuidedTestingManager {
     const waText = encodeURIComponent(
       `*EVALUASI TESTER - PROTOTIPE PATUNGAN AKUN*\n` +
       `--------------------------------------\n` +
-      `👤 Nama: ${displayName}\n` +
-      `📅 Waktu: ${displayTime}\n` +
-      `🎯 Progres Misi: ${displayStages} Tahap\n` +
-      `⭐ Rating Workflow: ${data.workflowRating}/5\n` +
-      `🎨 Rating UI/UX: ${data.uiuxRating}/5\n\n` +
+      `Nama: ${displayName}\n` +
+      `Waktu: ${displayTime}\n` +
+      `Progres Misi: ${displayStages} Tahap\n` +
+      `Rating Workflow: ${data.workflowRating}/5\n` +
+      `Rating UI/UX: ${data.uiuxRating}/5\n\n` +
       `*Masukan Alur (Workflow):*\n${data.workflowFeedback}\n\n` +
       `*Masukan Tampilan (UI/UX):*\n${data.uiuxFeedback}\n\n` +
       `*Saran Fitur Baru:*\n${displaySuggestions}`
@@ -965,23 +1479,23 @@ class GuidedTestingManager {
 
     container.innerHTML = `
       <div class="space-y-4 text-center py-2">
-        <div class="w-12 h-12 bg-emerald-600 text-white flex items-center justify-center mx-auto border-2 border-slate-900 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
+        <div class="w-12 h-12 bg-emerald-600 text-white flex items-center justify-center mx-auto shadow-sm">
           <i data-lucide="check-circle" class="w-6 h-6"></i>
         </div>
         <div>
-          <h4 class="font-black text-base text-slate-900">Evaluasi Anda Berhasil Disimpan!</h4>
+          <h4 class="font-bold text-base text-slate-900">Evaluasi Anda Berhasil Disimpan</h4>
           <span class="text-[11px] font-mono text-slate-500">ID Tiket: ${data.id}</span>
         </div>
 
         <!-- STATUS PENGIRIMAN KE GOOGLE SHEETS -->
         ${sendSuccess ? `
-          <div class="p-3.5 bg-emerald-50 border-2 border-emerald-600 text-emerald-950 text-left shadow-[2px_2px_0px_0px_rgba(5,150,105,1)]">
+          <div class="p-3 bg-emerald-50 border border-emerald-400 text-emerald-950 text-left shadow-sm">
             <div class="flex items-start gap-2.5">
-              <div class="w-6 h-6 bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+              <div class="w-5 h-5 bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
                 <i data-lucide="database" class="w-3.5 h-3.5"></i>
               </div>
               <div>
-                <span class="font-black text-xs uppercase block text-emerald-900">Terkirim Otomatis ke Database Google Sheets!</span>
+                <span class="font-bold text-xs uppercase block text-emerald-900">Terkirim Otomatis ke Database Google Sheets</span>
                 <p class="text-[11px] text-emerald-800 leading-snug mt-0.5">
                   Data masukan Anda telah otomatis dicatat ke spreadsheet rekap riset tim pengembang. <b>Anda tidak wajib mengirim manual lagi.</b> Opsi tombol di bawah ini bersifat opsional untuk arsip pribadi Anda.
                 </p>
@@ -989,13 +1503,13 @@ class GuidedTestingManager {
             </div>
           </div>
         ` : `
-          <div class="p-3.5 bg-amber-50 border-2 border-amber-500 text-amber-950 text-left shadow-[2px_2px_0px_0px_rgba(245,158,11,1)]">
+          <div class="p-3 bg-amber-50 border border-amber-300 text-amber-950 text-left shadow-sm">
             <div class="flex items-start gap-2.5">
-              <div class="w-6 h-6 bg-amber-400 text-slate-900 flex items-center justify-center shrink-0 mt-0.5 font-bold">
+              <div class="w-5 h-5 bg-amber-400 text-slate-900 flex items-center justify-center shrink-0 mt-0.5 font-bold">
                 <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
               </div>
               <div>
-                <span class="font-black text-xs uppercase block text-amber-900">Data Tersimpan Aman di Penyimpanan Lokal</span>
+                <span class="font-bold text-xs uppercase block text-amber-900">Data Tersimpan Aman di Penyimpanan Lokal</span>
                 <p class="text-[11px] text-amber-800 leading-snug mt-0.5">
                   Pengiriman langsung ke Google Sheets sedang offline atau terkendala jaringan (${sendError || 'koneksi offline'}). Data Anda tetap aman tersimpan di browser. Silakan gunakan tombol cadangan <b>Kirim via WhatsApp</b> atau <b>Download JSON</b> di bawah ini agar masukan Anda tetap tersampaikan.
                 </p>
@@ -1004,7 +1518,7 @@ class GuidedTestingManager {
           </div>
         `}
 
-        <!-- Action Buttons (Cadangan / Opsi Ekspor) -->
+        <!-- Action Buttons -->
         <div class="space-y-2 pt-1 text-left">
           <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block text-center">
             ${sendSuccess ? 'Opsi Arsip Pribadi / Cadangan (Opsional):' : 'Pilihan Pengiriman Cadangan:'}
@@ -1012,27 +1526,27 @@ class GuidedTestingManager {
           
           <!-- WhatsApp Share -->
           <a href="https://wa.me/?text=${waText}" target="_blank" 
-             class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center gap-2 transition-all">
+             class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors">
             <i data-lucide="message-circle" class="w-4 h-4"></i>
             <span>${sendSuccess ? 'Kirim Cadangan via WhatsApp (Opsional)' : 'Kirim Masukan via WhatsApp'}</span>
           </a>
 
           <!-- Download JSON -->
           <button onclick="guidedTesting.downloadJSON('${data.id}')" 
-                  class="w-full py-2.5 bg-slate-900 hover:bg-blue-600 text-white font-bold text-xs uppercase tracking-wider border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center gap-2 transition-all">
+                  class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors">
             <i data-lucide="download" class="w-4 h-4"></i>
             <span>Download File JSON (feedback-tester.json)</span>
           </button>
 
           <!-- Copy JSON -->
           <button onclick="guidedTesting.copyRawJSON('${data.id}')" 
-                  class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-900 flex items-center justify-center gap-2 transition-all">
+                  class="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-300 flex items-center justify-center gap-2 transition-colors">
             <i data-lucide="copy" class="w-3.5 h-3.5"></i>
             <span>Salin Format JSON ke Clipboard</span>
           </button>
         </div>
 
-        <div class="pt-3 border-t border-slate-200">
+        <div class="pt-2 border-t border-slate-200">
           <button onclick="guidedTesting.closeEvaluationModal()" class="text-xs text-slate-600 hover:text-slate-900 font-bold underline">
             Selesai & Tutup Jendela
           </button>
@@ -1088,7 +1602,7 @@ class GuidedTestingManager {
 
     navigator.clipboard.writeText(JSON.stringify(item, null, 2)).then(() => {
       if (window.app && typeof window.app.showToast === 'function') {
-        window.app.showToast('Data JSON berhasil disalin ke clipboard!', 'success');
+        window.app.showToast('Data JSON berhasil disalin ke clipboard.', 'success');
       } else {
         alert('Data JSON berhasil disalin!');
       }

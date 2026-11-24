@@ -137,15 +137,32 @@ Saat di-reset, seluruh data dikembalikan ke kondisi base data:
 
 ---
 
-## 🧭 Mode Panduan Pengujian Interaktif (Guided Usability Testing ala Duolingo)
+## 🧭 Mode Panduan Pengujian Interaktif (Strict Sequential Mode ala Duolingo)
 
-Untuk memberikan pengalaman uji coba yang terarah dan menyenangkan, prototipe ini dilengkapi dengan **Mode Panduan Pengujian Bertahap (`testing.js`)**:
+Untuk memberikan pengalaman uji coba yang terarah, bebas distraksi, dan presisi tinggi, prototipe ini dilengkapi dengan **Mode Panduan Pengujian Ketat Bertahap (`testing.js`)**:
 
 1. **Floating Trigger Widget (Pojok Kiri Bawah):**
-   - Tombol mengambang elegan bertuliskan **"Panduan Tes (X/7)"** dengan persentase progres. Posisinya di kiri bawah sehingga tidak pernah bertabrakan dengan widget Asisten AI di kanan bawah.
-   - Menggunakan sudut siku tajam (`rounded-none`), aksen hijau emerald, dan bayangan neo-fintech.
+   - Tombol mengambang elegan bertuliskan **"Panduan Tes (X/7)"** dengan jumlah sub-misi (X/13) dan persentase progres. Posisinya di pojok kiri bawah sehingga tidak pernah bertabrakan dengan widget Asisten AI di pojok kanan bawah.
+   - Menggunakan sudut siku tajam (`rounded-none`), aksen hijau emerald, dan bayangan lembut modern (`shadow-md`).
 
-2. **Modal Selamat Datang (Intro Study Case):**
+2. **Kunci Ketat per Sub-Tahap (Strict Sequential State):**
+   - Setiap sub-tahap harus diaktifkan secara sadar dengan menekan tombol **"Mulai Sub-Tes Ini"** (`isSubCaseRunning = true`).
+   - Sistem menolak aksi dari tahap lain atau aksi yang dilakukan sebelum tombol "Mulai" ditekan, mencegah tester melompati langkah atau mencentang beberapa misi secara tidak sengaja.
+
+3. **Auto-Minimize Drawer ke Mini-Bar Kompak:**
+   - Begitu tombol **"Mulai Sub-Tes Ini"** diklik, jendela panduan otomatis mengecil menjadi bar kompak di pojok kiri bawah (`bottom-5 left-5`).
+   - Mini-bar hanya memuat nama misi yang sedang aktif, status berkedip *"Misi Berjalan"*, tombol bantuan *"Lihat Clue"*, dan tombol *"Perbesar"*, sehingga layar tetap leluasa untuk eksplorasi.
+
+4. **Clue Otomatis & Blinking Spotlight Animation:**
+   - Jika tester tidak melakukan aksi selama 5 detik (atau melakukan klik yang keliru), sistem otomatis menyalakan **Blinking Spotlight** kuning menyala (`outline: 3px solid #f59e0b` berdenyut) pada elemen tombol/input sasaran disertai pin badge bertuliskan *"Klik di sini"*.
+   - Target finder cerdas juga dapat menyorot tombol navbar yang relevan jika tester sedang berada di halaman yang berbeda.
+
+5. **Mini-Evaluasi Setiap Selesai 1 Sub-Tahap (Step Micro-Review):**
+   - Setelah menyelesaikan aksi, sistem tidak langsung meloncat ke langkah berikutnya, melainkan memunculkan modal evaluasi cepat: *"Bagaimana pengalamanmu di langkah ini?"*.
+   - Tester memilih 1 dari 3 opsi: **"Aman & Jelas"**, **"Agak Bingung"**, atau **"Terasa Aneh / Ada Bug"** (disertai catatan singkat wajib jika bingung/bug).
+   - Seluruh catatan sub-tahap ini dicatat dan otomatis dikompilasi ke dalam kolom ulasan Google Sheets.
+
+6. **Modal Selamat Datang (Intro Study Case):**
    - Muncul otomatis saat tester baru pertama kali membuka web.
    - Memberikan gambaran singkat mengenai 7 tahap pengujian yang akan dijalani, dilengkapi tombol **"Mulai Misi Tahap 1"** dan *"Jelajah Bebas"*.
 

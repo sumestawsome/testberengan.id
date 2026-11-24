@@ -413,7 +413,7 @@ class AppController {
                       </div>
                     </div>
 
-                    <button onclick="app.navigate('product-detail', { productId: '${product.id}' })" 
+                    <button id="card-btn-${product.id}" onclick="app.navigate('product-detail', { productId: '${product.id}' })" 
                             class="w-full py-2.5 bg-slate-900 hover:bg-blue-600 text-white font-bold text-xs uppercase tracking-wider border-2 border-slate-900 flex items-center justify-center gap-1.5 transition-colors">
                       <span>Pilih Paket & Grup</span>
                       <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
@@ -596,7 +596,7 @@ class AppController {
                   Saat ini belum ada grup patungan yang dibuka untuk layanan ini. Anda dapat mengajukan pembukaan grup baru atau langsung membukanya di Mode Admin.
                 </p>
                 <div class="mt-5 flex flex-wrap justify-center gap-3">
-                  <button onclick="app.requestNewGroup('${product.id}')" 
+                  <button id="btn-request-new-group" onclick="app.requestNewGroup('${product.id}')" 
                           class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center gap-1.5 transition-all">
                     <i data-lucide="bell-ring" class="w-4 h-4"></i>
                     <span>Request Buka Grup Baru</span>
@@ -810,7 +810,7 @@ class AppController {
               <i data-lucide="sliders" class="w-4 h-4 text-amber-600"></i>
               <span>Simulator Edge Case (Tester):</span>
             </div>
-            <button onclick="app.simulateRaceCondition('${group.id}')" 
+            <button id="btn-simulate-race" onclick="app.simulateRaceCondition('${group.id}')" 
                     class="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-900 font-extrabold text-[11px] border border-slate-900 shadow-[1px_1px_0px_0px_rgba(15,23,42,1)] flex items-center gap-1">
               <i data-lucide="zap" class="w-3.5 h-3.5"></i>
               <span>Simulasikan Slot Diserobot Orang Lain (Penuh)</span>
