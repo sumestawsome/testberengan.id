@@ -449,19 +449,19 @@ class GuidedTestingManager {
   // --- CLUE & SPOTLIGHT BLINKING (ESKALASI 2 LEVEL) ---
   startIdleClueTimer() {
     this.clearClueTimers();
-    // Detik ke-5: Clue Level 1 (Blinking Spotlight)
+    // Detik ke-10: Clue Level 1 (Blinking Spotlight)
     this.idleTimerL1 = setTimeout(() => {
       if (this.progress && this.progress.isSubCaseRunning) {
         this.activateClueLevel1();
       }
-    }, 5000);
+    }, 10000);
 
-    // Detik ke-10: Clue Level 2 (Interactive Input Example / Clarified Button Instruction)
+    // Detik ke-15: Clue Level 2 (Interactive Input Example / Clarified Button Instruction)
     this.idleTimerL2 = setTimeout(() => {
       if (this.progress && this.progress.isSubCaseRunning) {
         this.activateClueLevel2();
       }
-    }, 10000);
+    }, 15000);
   }
 
   clearClueTimers() {
@@ -607,7 +607,13 @@ class GuidedTestingManager {
     let label = (targetEl.innerText || targetEl.getAttribute('aria-label') || '').trim().replace(/\s+/g, ' ');
     if (label.length > 30) label = label.slice(0, 30) + '...';
 
-    if (targetEl.id === 'plan-btn-3_month' || targetEl.getAttribute('onclick')?.includes('3_month')) {
+    if (targetEl.id === 'nav-btn-home' || targetEl.getAttribute('onclick')?.includes("'home'")) {
+      this.clarifiedClueText = 'Klik menu "Katalog Produk" di atas yang sedang berkedip kuning untuk kembali ke halaman utama.';
+    } else if (targetEl.id === 'nav-btn-orders' || targetEl.getAttribute('onclick')?.includes("'my-orders'")) {
+      this.clarifiedClueText = 'Klik menu "Pesanan & Dompet" di atas yang sedang berkedip kuning.';
+    } else if (targetEl.id === 'nav-btn-admin' || targetEl.getAttribute('onclick')?.includes("'admin'")) {
+      this.clarifiedClueText = 'Klik tombol "Mode Admin (Tester)" di atas yang sedang berkedip kuning.';
+    } else if (targetEl.id === 'plan-btn-3_month' || targetEl.getAttribute('onclick')?.includes('3_month')) {
       this.clarifiedClueText = 'Klik tombol durasi "3 Bulan" yang sedang berkedip kuning.';
     } else if (targetEl.id === 'btn-request-new-group' || targetEl.getAttribute('onclick')?.includes('requestNewGroup')) {
       this.clarifiedClueText = 'Klik tombol hijau "Request Buka Grup Baru" yang sedang berkedip.';
@@ -615,6 +621,10 @@ class GuidedTestingManager {
       this.clarifiedClueText = 'Klik tombol simulator kuning "Simulasikan Slot Diserobot Orang Lain (Penuh)".';
     } else if (targetEl.id === 'btn-submit-checkout' || targetEl.getAttribute('onclick')?.includes('submitCheckout')) {
       this.clarifiedClueText = 'Klik tombol "Konfirmasi & Bayar" yang sedang berkedip.';
+    } else if (targetEl.id === 'payment-method-manual' || targetEl.getAttribute('onclick')?.includes('TRANSFER_MANUAL')) {
+      this.clarifiedClueText = 'Klik opsi "Transfer Manual (BCA/Mandiri/QRIS)" yang sedang berkedip.';
+    } else if (targetEl.id === 'payment-method-saldo' || targetEl.getAttribute('onclick')?.includes('SALDO')) {
+      this.clarifiedClueText = 'Klik opsi "Bayar Pakai Saldo Dompet" yang sedang berkedip.';
     } else if (targetEl.getAttribute('onclick')?.includes('adminApproveOrder')) {
       this.clarifiedClueText = 'Klik tombol hijau "Approve" pada pesanan yang menunggu verifikasi.';
     } else if (targetEl.getAttribute('onclick')?.includes('adminRejectPrompt')) {
@@ -682,13 +692,13 @@ class GuidedTestingManager {
         if (currentView !== 'home') {
           return {
             stepLabel: 'Langkah 1/2',
-            instruction: 'Buka halaman Beranda katalog produk.',
-            targetSelector: '#nav-btn-home'
+            instruction: 'Klik "Katalog Produk" di menu atas untuk membuka katalog.',
+            targetSelector: '#nav-btn-home, button[onclick*="\'home\'"]'
           };
         }
         return {
-          stepLabel: 'Langkah 1/1',
-          instruction: 'Ketik minimal 3 huruf (misal "canva") di kolom search katalog atau klik salah satu tab kategori.',
+          stepLabel: 'Langkah 2/2',
+          instruction: 'Ketik minimal 3 huruf (misal "canva") di kolom pencarian katalog atau klik tab kategori.',
           targetSelector: '#catalog-search, button[onclick*="setCategoryFilter"]'
         };
       }
@@ -705,14 +715,20 @@ class GuidedTestingManager {
         } else {
           return {
             stepLabel: 'Langkah 2/2',
-            instruction: 'Klik tombol quick prompt "Paket < 25rb?" di bagian atas chat (atau ketik pertanyaan paket di bawah 25rb).',
+            instruction: 'Klik quick prompt "Paket < 25rb?" di atas chat (atau ketik pertanyaan paket murah).',
             targetSelector: '#ai-chat-window button[onclick*="Paket di bawah 25rb"], #ai-chat-window button[onclick*="25rb"], #ai-chat-input'
           };
         }
       }
 
       case '2A': {
-        if (currentView !== 'product-detail' || viewParams.productId !== 'prod_canva') {
+        if (currentView === 'product-detail' && viewParams.productId === 'prod_canva') {
+          return {
+            stepLabel: 'Langkah 2/2',
+            instruction: 'Klik pilihan durasi "3 Bulan" pada paket Canva Pro Team.',
+            targetSelector: '#plan-btn-3_month, button[onclick*="\'3_month\'"]'
+          };
+        } else if (currentView === 'home') {
           return {
             stepLabel: 'Langkah 1/2',
             instruction: 'Klik "Pilih Paket & Grup" pada kartu Canva Pro Team.',
@@ -720,25 +736,31 @@ class GuidedTestingManager {
           };
         } else {
           return {
-            stepLabel: 'Langkah 2/2',
-            instruction: 'Klik tombol durasi "3 Bulan" (Rp 75.000).',
-            targetSelector: '#plan-btn-3_month, button[onclick*="\'3_month\'"]'
+            stepLabel: 'Langkah 1/3',
+            instruction: 'Klik "Katalog Produk" di menu atas untuk kembali ke katalog.',
+            targetSelector: '#nav-btn-home, button[onclick*="\'home\'"]'
           };
         }
       }
 
       case '2B': {
-        if (currentView !== 'product-detail' || viewParams.productId !== 'prod_spotify') {
+        if (currentView === 'product-detail' && viewParams.productId === 'prod_spotify') {
           return {
-            stepLabel: 'Langkah 1/2',
+            stepLabel: 'Langkah 3/3',
+            instruction: 'Klik tombol "Request Buka Grup Baru" pada detail Spotify.',
+            targetSelector: '#btn-request-new-group, button[onclick*="requestNewGroup"]'
+          };
+        } else if (currentView === 'home') {
+          return {
+            stepLabel: 'Langkah 2/3',
             instruction: 'Klik "Pilih Paket & Grup" pada kartu Spotify Premium Family.',
             targetSelector: '#card-btn-prod_spotify, button[onclick*="prod_spotify"]'
           };
         } else {
           return {
-            stepLabel: 'Langkah 2/2',
-            instruction: 'Klik tombol "Request Buka Grup Baru".',
-            targetSelector: '#btn-request-new-group, button[onclick*="requestNewGroup"]'
+            stepLabel: 'Langkah 1/3',
+            instruction: 'Klik "Katalog Produk" di menu atas untuk kembali ke halaman utama sebelum mencari Spotify.',
+            targetSelector: '#nav-btn-home, button[onclick*="\'home\'"]'
           };
         }
       }
@@ -761,122 +783,201 @@ class GuidedTestingManager {
             targetSelector: '#nav-user-pill button[onclick*="logoutUser"], #nav-user-pill'
           };
         } else {
-          if (currentView !== 'product-detail') {
+          if (currentView === 'product-detail') {
+            const hasJoinBtn = document.querySelector('button[onclick*="handleJoinGroup"]');
+            if (hasJoinBtn && this.isElementVisible(hasJoinBtn)) {
+              return {
+                stepLabel: 'Langkah 2/3',
+                instruction: 'Klik tombol "Gabung Grup Ini" untuk memicu pencegatan login.',
+                targetSelector: 'button[onclick*="handleJoinGroup"]'
+              };
+            }
+          }
+          if (currentView === 'home') {
             return {
               stepLabel: 'Langkah 2/3',
-              instruction: 'Buka salah satu produk (misal Netflix) di katalog lalu klik "Gabung Grup Ini".',
+              instruction: 'Buka produk dengan grup tersedia, misal klik "Pilih Paket & Grup" pada Netflix atau Canva.',
               targetSelector: '#card-btn-prod_netflix, #card-btn-prod_canva'
             };
-          } else {
-            return {
-              stepLabel: 'Langkah 2/3',
-              instruction: 'Klik tombol "Gabung Grup Ini" untuk memicu pencegatan login.',
-              targetSelector: 'button[onclick*="handleJoinGroup"]'
-            };
           }
+          return {
+            stepLabel: 'Langkah 2/3',
+            instruction: 'Klik "Katalog Produk" di menu atas lalu pilih produk dengan grup terbuka (Netflix/Canva).',
+            targetSelector: '#nav-btn-home, button[onclick*="\'home\'"]'
+          };
         }
       }
 
       case '4A': {
-        if (currentView !== 'checkout') {
-          return {
-            stepLabel: 'Langkah 1/2',
-            instruction: 'Pilih produk & grup terbuka lalu klik "Gabung Grup Ini".',
-            targetSelector: 'button[onclick*="handleJoinGroup"], #card-btn-prod_canva'
-          };
-        } else {
+        if (currentView === 'checkout') {
           if (app.selectedPaymentMethod !== 'TRANSFER_MANUAL') {
             return {
               stepLabel: 'Langkah 2/2',
-              instruction: 'Pilih metode Transfer Manual (BCA/Mandiri/QRIS) lalu klik "Konfirmasi & Bayar".',
-              targetSelector: '#payment-method-manual, div[onclick*="TRANSFER_MANUAL"]'
+              instruction: 'Pilih kotak metode "Transfer Manual (BCA/Mandiri/QRIS)".',
+              targetSelector: '#payment-method-manual, div[onclick*="setPaymentMethod(\'TRANSFER_MANUAL\')"]'
             };
           } else {
             return {
               stepLabel: 'Langkah 2/2',
               instruction: 'Unggah bukti transfer (atau gunakan simulasi) lalu klik "Konfirmasi & Bayar".',
-              targetSelector: '#btn-submit-checkout, button[onclick*="submitCheckout"], #upload-proof-box'
+              targetSelector: '#btn-submit-checkout, button[onclick*="submitCheckout"]'
+            };
+          }
+        } else if (currentView === 'product-detail') {
+          const hasJoinBtn = document.querySelector('button[onclick*="handleJoinGroup"]');
+          if (hasJoinBtn && this.isElementVisible(hasJoinBtn)) {
+            return {
+              stepLabel: 'Langkah 1/2',
+              instruction: 'Klik tombol "Gabung Grup Ini" untuk masuk ke halaman checkout.',
+              targetSelector: 'button[onclick*="handleJoinGroup"]'
             };
           }
         }
+        if (currentView === 'home') {
+          return {
+            stepLabel: 'Langkah 1/2',
+            instruction: 'Pilih produk dengan grup terbuka, misal Canva Pro Team.',
+            targetSelector: '#card-btn-prod_canva, button[onclick*="prod_canva"]'
+          };
+        }
+        return {
+          stepLabel: 'Langkah 1/3',
+          instruction: 'Klik "Katalog Produk" di menu atas untuk memilih produk yang ingin di-checkout.',
+          targetSelector: '#nav-btn-home, button[onclick*="\'home\'"]'
+        };
       }
 
       case '4B': {
-        if (currentView !== 'checkout') {
-          return {
-            stepLabel: 'Langkah 1/2',
-            instruction: 'Pilih produk & grup terbuka lalu klik "Gabung Grup Ini".',
-            targetSelector: 'button[onclick*="handleJoinGroup"], #card-btn-prod_netflix'
-          };
-        } else {
+        if (currentView === 'checkout') {
+          const curUser = patState && typeof patState.getCurrentUser === 'function' ? patState.getCurrentUser() : { balance: 0 };
+          const curGroup = patState && typeof patState.getGroupById === 'function' && viewParams.groupId ? patState.getGroupById(viewParams.groupId) : null;
+          const curProduct = curGroup ? (patState.getProductById ? patState.getProductById(curGroup.productId) : null) : null;
+          const planKey = viewParams.planKey || (curGroup ? curGroup.planKey : '1_month');
+          const plan = curProduct && curProduct.plans ? curProduct.plans[planKey] : null;
+          const planPrice = plan ? plan.price : (curGroup ? curGroup.price : 0);
+          const hasEnoughBalance = curUser.balance >= planPrice;
+
           if (app.selectedPaymentMethod !== 'SALDO') {
             return {
-              stepLabel: 'Langkah 2/2',
-              instruction: 'Pilih metode "Bayar Pakai Saldo Dompet" lalu klik "Konfirmasi & Bayar".',
-              targetSelector: '#payment-method-saldo, div[onclick*="SALDO"]'
+              stepLabel: 'Langkah 2/3',
+              instruction: 'Pilih kotak metode "Bayar Pakai Saldo Dompet".',
+              targetSelector: '#payment-method-saldo, div[onclick*="setPaymentMethod(\'SALDO\')"]'
+            };
+          } else if (!hasEnoughBalance) {
+            const modalTopup = document.getElementById('modal-topup');
+            const isTopupOpen = modalTopup && !modalTopup.classList.contains('hidden');
+            if (isTopupOpen) {
+              return {
+                stepLabel: 'Langkah 2/3',
+                instruction: 'Pilih nominal top up (misal + Rp 50.000) untuk menambah saldo.',
+                targetSelector: '#modal-topup button[onclick*="processTopUp"], #modal-topup button:has-text("50.000")'
+              };
+            }
+            return {
+              stepLabel: 'Langkah 2/3',
+              instruction: 'Saldo tidak cukup. Klik tombol "Top Up Saldo Sekarang" untuk menambah saldo simulator.',
+              targetSelector: 'button[onclick*="showTopUpModal"], #modal-topup-trigger'
             };
           } else {
             return {
-              stepLabel: 'Langkah 2/2',
+              stepLabel: 'Langkah 3/3',
               instruction: 'Klik tombol "Konfirmasi & Bayar" untuk menyelesaikan pesanan via saldo.',
               targetSelector: '#btn-submit-checkout, button[onclick*="submitCheckout"]'
             };
           }
+        } else if (currentView === 'product-detail') {
+          const hasJoinBtn = document.querySelector('button[onclick*="handleJoinGroup"]');
+          if (hasJoinBtn && this.isElementVisible(hasJoinBtn)) {
+            return {
+              stepLabel: 'Langkah 1/2',
+              instruction: 'Klik tombol "Gabung Grup Ini" untuk melanjutkan ke pembayaran.',
+              targetSelector: 'button[onclick*="handleJoinGroup"]'
+            };
+          }
         }
+        if (currentView === 'home') {
+          return {
+            stepLabel: 'Langkah 1/2',
+            instruction: 'Pilih produk dengan grup terbuka, misal Netflix Premium.',
+            targetSelector: '#card-btn-prod_netflix, #card-btn-prod_canva'
+          };
+        }
+        return {
+          stepLabel: 'Langkah 1/3',
+          instruction: 'Klik "Katalog Produk" di menu atas untuk memilih produk patungan.',
+          targetSelector: '#nav-btn-home, button[onclick*="\'home\'"]'
+        };
       }
 
       case '4C': {
-        if (currentView !== 'checkout') {
-          return {
-            stepLabel: 'Langkah 1/3',
-            instruction: 'Masuk ke halaman Checkout grup mana saja.',
-            targetSelector: '#card-btn-prod_canva, button[onclick*="handleJoinGroup"]'
-          };
-        } else {
-          const grp = patState && typeof patState.getGroupById === 'function' && viewParams.groupId 
-                    ? patState.getGroupById(viewParams.groupId) : null;
-          const isFull = grp && grp.slotsTaken >= grp.slotsTotal;
+        if (currentView === 'checkout') {
+          const curGroup = patState && typeof patState.getGroupById === 'function' && viewParams.groupId 
+                         ? patState.getGroupById(viewParams.groupId) : null;
+          const isFull = curGroup && (curGroup.status === 'FULL' || curGroup.currentSlots >= curGroup.maxSlots || app.checkoutRaceConditionError);
+
           if (!isFull) {
             return {
               stepLabel: 'Langkah 2/3',
-              instruction: 'Klik tombol kuning "Simulasikan Slot Diserobot Orang Lain".',
+              instruction: 'Klik tombol kuning "Simulasikan Slot Diserobot Orang Lain" (atau tunggu spotlight untuk bantuan).',
               targetSelector: '#btn-simulate-race, button[onclick*="simulateRaceCondition"]'
             };
           } else {
             return {
               stepLabel: 'Langkah 3/3',
-              instruction: 'Klik "Konfirmasi & Bayar" untuk memunculkan pesan error slot penuh.',
+              instruction: 'Klik "Konfirmasi & Bayar" untuk memunculkan peringatan slot penuh.',
               targetSelector: '#btn-submit-checkout, button[onclick*="submitCheckout"]'
             };
           }
+        } else if (currentView === 'product-detail') {
+          const hasJoinBtn = document.querySelector('button[onclick*="handleJoinGroup"]');
+          if (hasJoinBtn && this.isElementVisible(hasJoinBtn)) {
+            return {
+              stepLabel: 'Langkah 1/2',
+              instruction: 'Klik "Gabung Grup Ini" untuk masuk ke halaman checkout.',
+              targetSelector: 'button[onclick*="handleJoinGroup"]'
+            };
+          }
         }
+        if (currentView === 'home') {
+          return {
+            stepLabel: 'Langkah 1/2',
+            instruction: 'Pilih produk dengan grup terbuka (misal Canva Pro Team).',
+            targetSelector: '#card-btn-prod_canva, button[onclick*="prod_canva"]'
+          };
+        }
+        return {
+          stepLabel: 'Langkah 1/3',
+          instruction: 'Klik "Katalog Produk" di menu atas untuk membuka produk yang ingin di-checkout.',
+          targetSelector: '#nav-btn-home, button[onclick*="\'home\'"]'
+        };
       }
 
       case '5A': {
         if (currentView !== 'admin') {
           return {
             stepLabel: 'Langkah 1/2',
-            instruction: 'Klik tombol "Mode Admin (Tester)" di navbar.',
-            targetSelector: '#nav-btn-admin'
+            instruction: 'Klik tombol "Mode Admin (Tester)" di menu atas.',
+            targetSelector: '#nav-btn-admin, button[onclick*="\'admin\'"]'
           };
         } else {
           return {
             stepLabel: 'Langkah 2/2',
-            instruction: 'Klik tombol "Approve" pada pesanan pending (Menunggu Verifikasi).',
+            instruction: 'Klik tombol "Approve" pada salah satu pesanan pending (Menunggu Verifikasi).',
             targetSelector: 'button[onclick*="adminApproveOrder"]'
           };
         }
       }
 
       case '5B': {
-        const orders = patState && typeof patState.getOrders === 'function' ? patState.getOrders() : (patState.state ? patState.state.orders : []);
-        const hasRejected = orders.some(o => o.status === 'Ditolak');
+        const allOrders = patState && typeof patState.getAllOrders === 'function' ? patState.getAllOrders() : (patState.state ? patState.state.orders : []);
+        const hasRejected = allOrders.some(o => o.status === 'Ditolak');
+
         if (!hasRejected) {
           if (currentView !== 'admin') {
             return {
-              stepLabel: 'Langkah 1/2',
-              instruction: 'Buka Mode Admin di navbar untuk menolak salah satu pesanan.',
-              targetSelector: '#nav-btn-admin'
+              stepLabel: 'Langkah 1/3',
+              instruction: 'Klik "Mode Admin (Tester)" di menu atas untuk menolak salah satu pesanan.',
+              targetSelector: '#nav-btn-admin, button[onclick*="\'admin\'"]'
             };
           } else {
             return {
@@ -888,23 +989,23 @@ class GuidedTestingManager {
         } else {
           if (currentView !== 'my-orders') {
             return {
-              stepLabel: 'Langkah 2/2',
-              instruction: 'Buka menu "Pesanan & Dompet" di navbar.',
-              targetSelector: '#nav-btn-orders'
+              stepLabel: 'Langkah 2/3',
+              instruction: 'Buka menu "Pesanan & Dompet" di navbar untuk melihat pesanan yang ditolak.',
+              targetSelector: '#nav-btn-orders, button[onclick*="\'my-orders\'"]'
             };
           } else {
             const modalReupload = document.getElementById('modal-reupload-proof');
             const isModalOpen = modalReupload && !modalReupload.classList.contains('hidden');
             if (isModalOpen) {
               return {
-                stepLabel: 'Langkah 2/2',
+                stepLabel: 'Langkah 3/3',
                 instruction: 'Klik "Kirim Bukti Baru ke Admin" di dalam modal upload ulang.',
-                targetSelector: 'button[onclick*="submitReuploadProof"]'
+                targetSelector: '#modal-reupload-proof button[onclick*="submitReuploadProof"], button[onclick*="submitReuploadProof"]'
               };
             } else {
               return {
-                stepLabel: 'Langkah 2/2',
-                instruction: 'Klik tombol "Upload Ulang Bukti" pada pesanan yang ditolak.',
+                stepLabel: 'Langkah 3/3',
+                instruction: 'Klik tombol "Upload Ulang Bukti" pada pesanan yang berstatus Ditolak.',
                 targetSelector: 'button[onclick*="showReuploadProofModal"]'
               };
             }
@@ -916,8 +1017,8 @@ class GuidedTestingManager {
         if (currentView !== 'admin') {
           return {
             stepLabel: 'Langkah 1/2',
-            instruction: 'Buka "Mode Admin (Tester)" di navbar.',
-            targetSelector: '#nav-btn-admin'
+            instruction: 'Buka "Mode Admin (Tester)" di menu atas.',
+            targetSelector: '#nav-btn-admin, button[onclick*="\'admin\'"]'
           };
         } else {
           return {
@@ -932,8 +1033,8 @@ class GuidedTestingManager {
         if (currentView !== 'admin') {
           return {
             stepLabel: 'Langkah 1/2',
-            instruction: 'Buka "Mode Admin (Tester)" di navbar.',
-            targetSelector: '#nav-btn-admin'
+            instruction: 'Buka "Mode Admin (Tester)" di menu atas.',
+            targetSelector: '#nav-btn-admin, button[onclick*="\'admin\'"]'
           };
         } else {
           return {
@@ -948,8 +1049,8 @@ class GuidedTestingManager {
         if (currentView !== 'my-orders') {
           return {
             stepLabel: 'Langkah 1/3',
-            instruction: 'Buka menu "Pesanan & Dompet" di navbar.',
-            targetSelector: '#nav-btn-orders'
+            instruction: 'Buka menu "Pesanan & Dompet" di menu atas.',
+            targetSelector: '#nav-btn-orders, button[onclick*="\'my-orders\'"]'
           };
         } else {
           const credModal = document.getElementById('modal-credentials');
@@ -957,8 +1058,8 @@ class GuidedTestingManager {
           if (isCredModalOpen) {
             return {
               stepLabel: 'Langkah 3/3',
-              instruction: 'Klik tombol "Salin" atau ikon Mata (Lihat Password) pada kredensial.',
-              targetSelector: 'button[onclick*="copyToClipboard"], button[onclick*="togglePasswordVisibility"]'
+              instruction: 'Klik ikon Mata (Lihat Password) atau tombol "Salin" pada detail kredensial.',
+              targetSelector: '#credentials-content button[onclick*="togglePasswordVisibility"], #credentials-content button[onclick*="copyToClipboard"]'
             };
           } else {
             return {
@@ -1295,13 +1396,13 @@ class GuidedTestingManager {
     if (this.isMinimized && this.progress.isSubCaseRunning) {
       container.innerHTML = `
         <div class="fixed bottom-5 left-5 z-50">
-          <div id="guided-test-minibar" class="bg-white border border-slate-800 shadow-lg px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-lg w-[92vw] sm:w-[480px]">
-            <div class="flex items-center gap-2.5 overflow-hidden">
-              <div class="w-8 h-8 bg-slate-900 text-white flex items-center justify-center shrink-0 border border-slate-900">
+          <div id="guided-test-minibar" class="bg-white border border-slate-800 shadow-lg px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-[94vw] w-[94vw] sm:w-[500px]">
+            <div class="flex items-start sm:items-center gap-2.5 min-w-0 flex-grow">
+              <div class="w-8 h-8 bg-slate-900 text-white flex items-center justify-center shrink-0 border border-slate-900 mt-0.5 sm:mt-0">
                 <i data-lucide="${curStage.icon}" class="w-4 h-4 text-emerald-400"></i>
               </div>
-              <div class="truncate">
-                <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase">
+              <div class="min-w-0 flex-grow">
+                <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase flex-wrap">
                   <span>Tahap ${curStage.stage}</span>
                   <span>•</span>
                   <span class="px-1.5 py-0.2 bg-slate-100 text-slate-800 border border-slate-300 font-bold">${stepInfo.stepLabel}</span>
@@ -1311,12 +1412,12 @@ class GuidedTestingManager {
                   </span>
                 </div>
                 <div class="font-extrabold text-xs text-slate-900 truncate">${curCase.title}</div>
-                <div class="text-[11px] text-slate-600 truncate font-medium mt-0.5">${stepInfo.instruction}</div>
+                <div class="text-[11px] text-slate-600 font-medium mt-0.5 whitespace-normal leading-snug">${stepInfo.instruction}</div>
               </div>
             </div>
 
             ${this.clueActive ? `
-              <div class="w-full sm:hidden p-2 bg-amber-50 border border-amber-300 text-amber-950 text-[11px] leading-snug">
+              <div class="w-full sm:hidden p-2 bg-amber-50 border border-amber-300 text-amber-950 text-[11px] leading-snug whitespace-normal">
                 <b>Panduan Target:</b> ${this.clarifiedClueText || stepInfo.instruction}
               </div>
             ` : ''}
@@ -1337,7 +1438,7 @@ class GuidedTestingManager {
           </div>
           
           ${this.clueActive ? `
-            <div class="hidden sm:block mt-1 p-2 bg-amber-50 border border-amber-300 text-amber-950 text-[11px] leading-snug max-w-lg shadow-md">
+            <div class="hidden sm:block mt-1 p-2 bg-amber-50 border border-amber-300 text-amber-950 text-[11px] leading-snug max-w-[94vw] w-[94vw] sm:w-[500px] shadow-md whitespace-normal">
               <b>Panduan Target:</b> ${this.clarifiedClueText || stepInfo.instruction}
             </div>
           ` : ''}
@@ -1660,7 +1761,7 @@ class GuidedTestingManager {
           <h4 class="font-bold uppercase tracking-wider text-slate-900 text-xs">Aturan Pengujian:</h4>
           <ul class="space-y-1.5 list-disc list-inside text-slate-800">
             <li><b>Kunci Sub-Tahap:</b> Klik tombol <b>"Mulai Sub-Tes Ini"</b> pada panduan sebelum melakukan aksi.</li>
-            <li><b>Auto-Minimize & Clue:</b> Saat misi dimulai, panel otomatis mengecil. Jika diam 5 detik, elemen target akan berkedip kuning.</li>
+            <li><b>Auto-Minimize & Clue:</b> Saat misi dimulai, panel otomatis mengecil. Jika diam 10 detik, elemen target akan berkedip kuning.</li>
             <li><b>Ulasan Cepat:</b> Di setiap selesai 1 sub-misi, berikan evaluasi cepat (Aman, Bingung, atau Bug).</li>
           </ul>
         </div>
