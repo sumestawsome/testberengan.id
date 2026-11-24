@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patungan Akun - Solusi Langganan Premium Resmi & Hemat</title>
+  
+  <!-- Google Font: Sora -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Sora', 'sans-serif'],
+          },
+          colors: {
+            surface: '#f8fafc',
+            navy: {
+              800: '#1e293b',
+              900: '#0f172a',
+              950: '#020617',
+            },
+            accent: {
+              DEFAULT: '#0284c7', // Sky-600
+              hover: '#0369a1',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* Strictly sharp edges everywhere */
+    * {
+      border-radius: 0px !important;
+    }
+    body {
+      font-family: 'Sora', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      overflow-x: hidden;
+    }
+    /* Smooth minimalist scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+
+    /* Modal transition helpers */
+    .modal-backdrop {
+      background-color: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(2px);
+    }
+
+    /* Pulse animation for live indicators */
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .4; }
+    }
+    .pulse-live {
+      animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-slate-900 selection:text-white">
+
+  <!-- TOP NOTICE / DEMO BANNER -->
+  <div class="bg-slate-900 text-white text-xs px-4 py-2 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span class="inline-block w-2 h-2 bg-emerald-400 pulse-live"></span>
+        <span class="font-medium tracking-wide">PROTOTIPE SISTEM INFORMASI PATUNGAN AKUN PREMIUM</span>
+        <span class="hidden md:inline text-slate-400">| Simulasikan transaksi, slot grup, & verifikasi secara langsung.</span>
+      </div>
+      <div class="flex items-center gap-3 text-xs">
+        <button onclick="app.showTopUpModal()" class="text-emerald-300 hover:text-emerald-200 underline font-semibold flex items-center gap-1">
+          <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Top Up Saldo Tester
+        </button>
+        <span class="text-slate-600">|</span>
+        <button onclick="app.showUserSwitchModal()" class="text-slate-300 hover:text-white underline flex items-center gap-1">
+          <i data-lucide="users" class="w-3.5 h-3.5"></i> Ganti Profil User
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN NAVIGATION -->
+  <header class="sticky top-0 z-40 bg-white border-b-2 border-slate-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Logo -->
+        <div class="flex items-center gap-3 cursor-pointer" onclick="app.navigate('home')">
+          <div class="w-10 h-10 bg-slate-900 text-white flex items-center justify-center font-black text-xl border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
+            PA
+          </div>
+          <div>
+            <span class="text-lg font-extrabold tracking-tight text-slate-900 block leading-tight">PATUNGAN<span class="text-blue-600">.AKUN</span></span>
+            <span class="text-[10px] uppercase font-semibold text-slate-500 tracking-wider">Legal, Murah & Terpercaya</span>
+          </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <nav class="hidden md:flex items-center space-x-1">
+          <button id="nav-btn-home" onclick="app.navigate('home')" 
+                  class="px-4 py-2 text-sm font-bold border-2 border-transparent hover:border-slate-900 hover:bg-slate-100 transition-all flex items-center gap-2">
+            <i data-lucide="layout-grid" class="w-4 h-4"></i> Katalog Produk
+          </button>
+          
+          <button id="nav-btn-orders" onclick="app.navigate('my-orders')" 
+                  class="px-4 py-2 text-sm font-bold border-2 border-transparent hover:border-slate-900 hover:bg-slate-100 transition-all flex items-center gap-2 relative">
+            <i data-lucide="receipt" class="w-4 h-4"></i> Pesanan & Dompet
+            <span id="nav-orders-badge" class="hidden bg-blue-600 text-white text-[10px] px-1.5 py-0.2 font-mono font-bold">0</span>
+          </button>
+        </nav>
+
+        <!-- Right Action & Tester Controls -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          
+          <!-- Mode Admin Tester Button -->
+          <button id="nav-btn-admin" onclick="app.navigate('admin')" 
+                  class="px-3 py-1.5 text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-900 border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center gap-1.5 transition-all active:translate-x-[1px] active:translate-y-[1px] active:shadow-none">
+            <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">Mode Admin (Tester)</span>
+            <span class="sm:hidden">Admin</span>
+            <span id="nav-pending-badge" class="bg-red-600 text-white text-[9px] px-1 py-0.2 font-mono font-bold hidden">0</span>
+          </button>
+
+          <!-- Current User Pill & Balance (or Guest Login Button) -->
+          <div id="nav-user-container" class="relative">
+            <div id="nav-user-pill" onclick="app.showUserSwitchModal()" 
+                 class="flex items-center gap-2 pl-3 pr-2 py-1.5 bg-slate-100 hover:bg-slate-200 border-2 border-slate-900 cursor-pointer shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition-all">
+              <div class="text-right">
+                <span id="nav-user-name" class="block text-xs font-bold text-slate-900 truncate max-w-[110px]">Budi Santoso</span>
+                <span id="nav-user-balance" class="block text-[11px] font-mono font-bold text-emerald-700">Rp 25.000</span>
+              </div>
+              <div class="w-7 h-7 bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
+                <i data-lucide="wallet" class="w-4 h-4"></i>
+              </div>
+              <button onclick="event.stopPropagation(); app.logoutUser()" title="Logout / Keluar" class="p-1 hover:text-red-600 text-slate-400">
+                <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+
+            <button id="nav-guest-login-btn" onclick="app.showLoginModal()" 
+                    class="hidden px-3.5 py-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center gap-1.5">
+              <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+              <span>Masuk / Login</span>
+            </button>
+          </div>
+
+          <!-- Mobile Menu Button -->
+          <button onclick="app.toggleMobileMenu()" class="md:hidden p-2 text-slate-900 border-2 border-slate-900 bg-white">
+            <i data-lucide="menu" class="w-5 h-5"></i>
+          </button>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Mobile Dropdown Navigation -->
+    <div id="mobile-menu" class="hidden md:hidden border-t-2 border-slate-900 bg-white px-4 py-3 space-y-2">
+      <button onclick="app.navigate('home'); app.toggleMobileMenu()" class="w-full text-left px-3 py-2 font-bold hover:bg-slate-100 flex items-center gap-2 border border-slate-300">
+        <i data-lucide="layout-grid" class="w-4 h-4"></i> Katalog Produk
+      </button>
+      <button onclick="app.navigate('my-orders'); app.toggleMobileMenu()" class="w-full text-left px-3 py-2 font-bold hover:bg-slate-100 flex items-center gap-2 border border-slate-300">
+        <i data-lucide="receipt" class="w-4 h-4"></i> Pesanan & Dompet Saldo
+      </button>
+      <button onclick="app.navigate('admin'); app.toggleMobileMenu()" class="w-full text-left px-3 py-2 font-bold bg-amber-400 hover:bg-amber-300 text-slate-900 flex items-center gap-2 border-2 border-slate-900">
+        <i data-lucide="shield-alert" class="w-4 h-4"></i> Mode Admin (Simulator Tester)
+      </button>
+      <div class="pt-2 flex gap-2">
+        <button onclick="app.showTopUpModal(); app.toggleMobileMenu()" class="flex-1 text-center py-2 text-xs font-bold bg-emerald-600 text-white">
+          + Top Up Saldo
+        </button>
+        <button onclick="app.showUserSwitchModal(); app.toggleMobileMenu()" class="flex-1 text-center py-2 text-xs font-bold border border-slate-900">
+          Ganti Profil
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- SPA DYNAMIC VIEW CONTAINER -->
+  <main id="app-view" class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- View content is injected here by app.js -->
+    <div class="flex items-center justify-center min-h-[300px]">
+      <div class="text-center">
+        <div class="inline-block w-8 h-8 border-4 border-slate-900 border-t-transparent animate-spin mb-3"></div>
+        <p class="font-bold text-sm text-slate-600">Memuat Patungan Akun...</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-t-2 border-slate-900 mt-12 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+        <div class="md:col-span-2">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-8 h-8 bg-slate-900 text-white flex items-center justify-center font-black text-sm">PA</div>
+            <span class="text-lg font-black tracking-tight text-slate-900">PATUNGAN<span class="text-blue-600">.AKUN</span></span>
+          </div>
+          <p class="text-sm text-slate-600 max-w-md leading-relaxed mb-4">
+            Platform patungan akun aplikasi premium resmi dan legal. Nikmati layanan hiburan, desain, video editing, dan kecerdasan buatan kelas dunia dengan biaya hemat hingga 75%.
+          </p>
+          <div class="flex items-center gap-2 text-xs font-mono font-semibold text-slate-500">
+            <span class="inline-block w-2 h-2 bg-emerald-500"></span> 100% Bergaransi Full Periode
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-xs font-black uppercase tracking-wider text-slate-900 mb-3 border-b-2 border-slate-900 pb-1">Kategori</h4>
+          <ul class="space-y-2 text-sm text-slate-600">
+            <li><a href="#/" onclick="app.setCategoryFilter('streaming')" class="hover:text-blue-600 font-medium">Streaming (Netflix, Spotify)</a></li>
+            <li><a href="#/" onclick="app.setCategoryFilter('desain')" class="hover:text-blue-600 font-medium">Desain (Canva Pro Team)</a></li>
+            <li><a href="#/" onclick="app.setCategoryFilter('editing')" class="hover:text-blue-600 font-medium">Editing (CapCut Pro)</a></li>
+            <li><a href="#/" onclick="app.setCategoryFilter('ai')" class="hover:text-blue-600 font-medium">AI Tools (ChatGPT Plus)</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="text-xs font-black uppercase tracking-wider text-slate-900 mb-3 border-b-2 border-slate-900 pb-1">Bantuan & Panduan</h4>
+          <ul class="space-y-2 text-sm text-slate-600">
+            <li><button onclick="app.openChatWithPrompt('Gimana sistem patungan & refund?')" class="hover:text-blue-600 font-medium text-left">Cara Kerja Patungan</button></li>
+            <li><button onclick="app.openChatWithPrompt('Gimana sistem patungan & refund?')" class="hover:text-blue-600 font-medium text-left">Kebijakan Pengembalian Dana</button></li>
+            <li><button onclick="app.navigate('admin')" class="hover:text-blue-600 font-medium text-left">Panel Kontrol Tester</button></li>
+            <li><button onclick="app.resetDataConfirm()" class="hover:text-red-600 font-medium text-left text-red-500">Reset Data Uji Coba</button></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-200 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+        <p>© 2026 Patungan Akun Prototype. Dibuat untuk simulasi sistem informasi.</p>
+        <p class="font-mono text-slate-400">Vanilla JS • Tailwind CSS • LocalStorage Sync</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ======================================================== -->
+  <!-- FLOATING AI CHATBOT WIDGET -->
+  <!-- ======================================================== -->
+  <div id="ai-chat-container" class="fixed bottom-5 right-5 z-50">
+    
+    <!-- Floating Trigger Button -->
+    <button id="ai-chat-trigger" onclick="app.toggleChat()" 
+            class="group bg-slate-900 hover:bg-blue-600 text-white p-3.5 border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] hover:shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center gap-2 relative">
+      <div class="relative">
+        <i data-lucide="bot" class="w-6 h-6"></i>
+        <span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 border border-slate-900"></span>
+      </div>
+      <span class="hidden sm:inline font-bold text-xs tracking-wide">Tanya Asisten AI</span>
+    </button>
+
+    <!-- Chat Box Window -->
+    <div id="ai-chat-window" class="hidden absolute bottom-14 right-0 w-[92vw] sm:w-[380px] max-h-[580px] h-[520px] bg-white border-2 border-slate-900 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] flex flex-col">
+      
+      <!-- Chat Header -->
+      <div class="bg-slate-900 text-white p-3.5 border-b-2 border-slate-900 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 bg-blue-600 text-white flex items-center justify-center font-bold">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <div class="font-bold text-xs flex items-center gap-1.5">
+              <span>Asisten Pintar Patungan</span>
+              <span class="w-2 h-2 bg-emerald-400 pulse-live"></span>
+            </div>
+            <div class="text-[10px] text-slate-300 font-mono">Online • Siap membantu 24/7</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-1">
+          <button onclick="app.clearChatHistory()" title="Bersihkan Chat" class="p-1 hover:bg-slate-800 text-slate-300 hover:text-white">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+          </button>
+          <button onclick="app.toggleChat()" title="Tutup Chat" class="p-1 hover:bg-slate-800 text-slate-300 hover:text-white">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Action Chips -->
+      <div class="bg-slate-100 p-2 border-b border-slate-200 overflow-x-auto whitespace-nowrap flex gap-1.5 text-[11px] no-scrollbar">
+        <button onclick="app.sendChatMessage('Paket di bawah 25rb?')" class="px-2.5 py-1 bg-white hover:bg-slate-200 border border-slate-900 font-semibold text-slate-800 shrink-0">
+          💰 Paket &lt; 25rb?
+        </button>
+        <button onclick="app.sendChatMessage('Gimana sistem patungan & refund?')" class="px-2.5 py-1 bg-white hover:bg-slate-200 border border-slate-900 font-semibold text-slate-800 shrink-0">
+          🔄 Cara & Refund
+        </button>
+        <button onclick="app.sendChatMessage('Rekomendasi app desain')" class="px-2.5 py-1 bg-white hover:bg-slate-200 border border-slate-900 font-semibold text-slate-800 shrink-0">
+          🎨 App Desain
+        </button>
+        <button onclick="app.sendChatMessage('Ada slot Netflix hampir penuh?')" class="px-2.5 py-1 bg-white hover:bg-slate-200 border border-slate-900 font-semibold text-slate-800 shrink-0">
+          ⚡ Netflix 4/5
+        </button>
+      </div>
+
+      <!-- Messages Area -->
+      <div id="ai-chat-messages" class="flex-grow p-3 overflow-y-auto space-y-3 bg-slate-50 text-xs">
+        <!-- Messages rendered by app.js -->
+      </div>
+
+      <!-- Chat Input Area -->
+      <div class="p-2.5 bg-white border-t-2 border-slate-900">
+        <form id="ai-chat-form" onsubmit="app.handleChatSubmit(event)" class="flex gap-2">
+          <input type="text" id="ai-chat-input" placeholder="Ketik pertanyaan (cth: canva, netflix, refund)..." 
+                 class="flex-grow px-3 py-2 text-xs border-2 border-slate-900 focus:outline-none focus:bg-blue-50" autocomplete="off" />
+          <button type="submit" class="bg-slate-900 hover:bg-blue-600 text-white px-3 py-2 font-bold border-2 border-slate-900 flex items-center justify-center">
+            <i data-lucide="send" class="w-4 h-4"></i>
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: DETAIL AKUN (KREDENSIAL AKTIF) -->
+  <!-- ======================================================== -->
+  <div id="modal-credentials" class="fixed inset-0 z-50 hidden modal-backdrop flex items-center justify-center p-4">
+    <div class="bg-white border-2 border-slate-900 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      
+      <div class="bg-slate-900 text-white p-4 border-b-2 border-slate-900 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 bg-emerald-500 text-slate-900 flex items-center justify-center font-bold">
+            <i data-lucide="key" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="font-extrabold text-sm uppercase tracking-wide">Detail Kredensial Akun</h3>
+            <span class="text-[11px] text-emerald-400 font-mono">● Akses Premium Aktif</span>
+          </div>
+        </div>
+        <button onclick="app.closeModal('modal-credentials')" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4" id="credentials-content">
+        <!-- Content injected dynamically -->
+      </div>
+
+      <div class="p-4 bg-slate-100 border-t-2 border-slate-900 flex justify-end">
+        <button onclick="app.closeModal('modal-credentials')" class="px-5 py-2 bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
+          Tutup
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: DETAIL ALASAN REJECT -->
+  <!-- ======================================================== -->
+  <div id="modal-reject-reason" class="fixed inset-0 z-50 hidden modal-backdrop flex items-center justify-center p-4">
+    <div class="bg-white border-2 border-slate-900 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] max-w-md w-full">
+      <div class="bg-red-600 text-white p-4 border-b-2 border-slate-900 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+          <h3 class="font-bold text-sm">Pesanan Ditolak Admin</h3>
+        </div>
+        <button onclick="app.closeModal('modal-reject-reason')" class="text-white hover:text-red-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-5 space-y-3">
+        <div class="text-xs text-slate-600 font-semibold">Alasan Penolakan:</div>
+        <div id="reject-reason-text" class="p-3 bg-red-50 border border-red-300 text-red-900 text-xs font-mono leading-relaxed">
+          -
+        </div>
+        <p class="text-[11px] text-slate-500">
+          Jika Anda merasa ini kekeliruan, Anda dapat membuat pesanan baru atau menghubungi customer service via chat.
+        </p>
+      </div>
+      <div class="p-3 bg-slate-100 border-t border-slate-300 flex justify-end">
+        <button onclick="app.closeModal('modal-reject-reason')" class="px-4 py-2 bg-slate-900 text-white font-bold text-xs">
+          Mengerti
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: TOP UP SALDO SIMULATOR -->
+  <!-- ======================================================== -->
+  <div id="modal-topup" class="fixed inset-0 z-50 hidden modal-backdrop flex items-center justify-center p-4">
+    <div class="bg-white border-2 border-slate-900 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] max-w-sm w-full">
+      <div class="bg-slate-900 text-white p-4 border-b-2 border-slate-900 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="plus-circle" class="w-4 h-4 text-emerald-400"></i>
+          <h3 class="font-bold text-sm">Top Up Saldo Tester</h3>
+        </div>
+        <button onclick="app.closeModal('modal-topup')" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="p-5 space-y-4">
+        <p class="text-xs text-slate-600">
+          Pilih nominal untuk menyimulasikan penambahan saldo dompet <b id="topup-user-name">User</b> secara instan:
+        </p>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <button onclick="app.processTopUp(20000)" class="p-2 border-2 border-slate-900 font-bold hover:bg-slate-100">+ Rp 20.000</button>
+          <button onclick="app.processTopUp(50000)" class="p-2 border-2 border-slate-900 font-bold hover:bg-slate-100">+ Rp 50.000</button>
+          <button onclick="app.processTopUp(100000)" class="p-2 border-2 border-slate-900 font-bold hover:bg-slate-100">+ Rp 100.000</button>
+          <button onclick="app.processTopUp(200000)" class="p-2 border-2 border-slate-900 font-bold hover:bg-slate-100">+ Rp 200.000</button>
+        </div>
+      </div>
+      <div class="p-3 bg-slate-100 border-t border-slate-300 flex justify-end">
+        <button onclick="app.closeModal('modal-topup')" class="px-4 py-1.5 text-xs font-bold border border-slate-900 bg-white">
+          Batal
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: GANTI PROFIL USER TESTER -->
+  <!-- ======================================================== -->
+  <div id="modal-user-switch" class="fixed inset-0 z-50 hidden modal-backdrop flex items-center justify-center p-4">
+    <div class="bg-white border-2 border-slate-900 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] max-w-md w-full">
+      <div class="bg-slate-900 text-white p-4 border-b-2 border-slate-900 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="users" class="w-4 h-4 text-blue-400"></i>
+          <h3 class="font-bold text-sm">Ganti Profil Akun Tester</h3>
+        </div>
+        <button onclick="app.closeModal('modal-user-switch')" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="p-5 space-y-3" id="user-switch-list">
+        <!-- Rendered by app.js -->
+      </div>
+      <div class="p-3 bg-slate-100 border-t border-slate-300 flex justify-end">
+        <button onclick="app.closeModal('modal-user-switch')" class="px-4 py-1.5 text-xs font-bold border border-slate-900 bg-white">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: LOGIN / REGISTRASI CEPAT (GUEST INTERCEPT) -->
+  <!-- ======================================================== -->
+  <div id="modal-login" class="fixed inset-0 z-50 hidden modal-backdrop flex items-center justify-center p-4">
+    <div class="bg-white border-2 border-slate-900 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div class="bg-slate-900 text-white p-4 border-b-2 border-slate-900 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 bg-blue-600 text-white flex items-center justify-center font-bold">
+            <i data-lucide="log-in" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm">Masuk / Registrasi Akun</h3>
+            <span class="text-[10px] text-slate-300 font-mono">Pilih akun dummy atau daftar cepat</span>
+          </div>
+        </div>
+        <button onclick="app.closeModal('modal-login')" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-5">
+        <!-- Section 1: Akun Dummy Siap Pakai -->
+        <div>
+          <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">1. Pilih Akun Pengujian:</label>
+          <div class="space-y-2" id="login-preset-users">
+            <!-- Rendered by app.js -->
+          </div>
+        </div>
+
+        <div class="relative flex items-center justify-center">
+          <div class="border-t border-slate-300 w-full"></div>
+          <span class="bg-white px-3 text-[10px] uppercase font-bold text-slate-400 absolute">Atau Buat Akun Baru</span>
+        </div>
+
+        <!-- Section 2: Registrasi Cepat -->
+        <div>
+          <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">2. Daftar Cepat (Bonus Saldo Rp 25.000):</label>
+          <form onsubmit="app.handleQuickRegister(event)" class="space-y-3">
+            <div>
+              <input type="text" id="reg-name" required placeholder="Nama Lengkap Anda..." 
+                     class="w-full px-3 py-2 text-xs border-2 border-slate-900 font-medium focus:outline-none focus:bg-blue-50" />
+            </div>
+            <div>
+              <input type="email" id="reg-email" required placeholder="Alamat Email..." 
+                     class="w-full px-3 py-2 text-xs border-2 border-slate-900 font-medium focus:outline-none focus:bg-blue-50" />
+            </div>
+            <button type="submit" 
+                    class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs uppercase tracking-wider border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center gap-1.5">
+              <i data-lucide="user-plus" class="w-4 h-4"></i>
+              <span>Daftar & Lanjutkan Pesanan</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-100 border-t border-slate-300 flex justify-end">
+        <button onclick="app.closeModal('modal-login')" class="px-4 py-1.5 text-xs font-bold border border-slate-900 bg-white">
+          Batal
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: UPLOAD ULANG BUKTI TRANSFER DITOLAK -->
+  <!-- ======================================================== -->
+  <div id="modal-reupload-proof" class="fixed inset-0 z-50 hidden modal-backdrop flex items-center justify-center p-4">
+    <div class="bg-white border-2 border-slate-900 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] max-w-md w-full">
+      <div class="bg-amber-400 text-slate-900 p-4 border-b-2 border-slate-900 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+          <div>
+            <h3 class="font-black text-sm">Upload Ulang Bukti Transfer</h3>
+            <span class="text-[10px] font-mono text-slate-800" id="reupload-order-title">Pesanan: -</span>
+          </div>
+        </div>
+        <button onclick="app.closeModal('modal-reupload-proof')" class="text-slate-900 hover:text-slate-700">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <!-- Rejection reason preview -->
+        <div class="p-3 bg-red-50 border border-red-300 text-xs text-red-900">
+          <span class="font-bold block mb-1">Catatan Penolakan Sebelumnya:</span>
+          <span id="reupload-reject-reason" class="font-mono text-[11px]">-</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-800 mb-1">Pilih File Bukti Transfer Baru:</label>
+          <div class="border-2 border-dashed border-slate-400 p-4 text-center bg-slate-50 hover:bg-slate-100 cursor-pointer"
+               onclick="document.getElementById('reupload-file-input').click()">
+            <input type="file" id="reupload-file-input" class="hidden" accept="image/*" 
+                   onchange="app.handleReuploadFileChange(event)" />
+            <div id="reupload-file-preview" class="text-xs font-semibold text-slate-700">
+              <i data-lucide="image" class="w-6 h-6 mx-auto text-slate-400 mb-1"></i>
+              <span>Klik untuk memilih file baru (atau gunakan simulasi)</span>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="app.submitReuploadProof()" 
+                class="w-full py-2.5 bg-slate-900 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center gap-1.5 transition-colors">
+          <i data-lucide="send" class="w-4 h-4"></i>
+          <span>Kirim Bukti Baru ke Admin</span>
+        </button>
+      </div>
+
+      <div class="p-3 bg-slate-100 border-t border-slate-300 flex justify-end">
+        <button onclick="app.closeModal('modal-reupload-proof')" class="px-4 py-1.5 text-xs font-bold border border-slate-900 bg-white">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
